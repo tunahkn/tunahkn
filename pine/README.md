@@ -182,10 +182,14 @@ borsanızın oranlarıyla değiştirmeden alınan backtest sonucu anlamlı deği
 
 ## Alarm kurulumu
 
-Strateji scriptlerinde `alertcondition()` Pine tarafından derlenmez (yalnızca
-indicator'larda geçerlidir), bu yüzden dinamik JSON `alert()` ve emirlerdeki
-`alert_message` ile üretilir. Dosyanın sonunda, scripti indicator'a çevirmek
-isteyenler için `alertcondition()` satırları yorum halinde bırakılmıştır.
+`alertcondition()` bir strateji scriptinde **derlenir, hata vermez** — ancak
+oluşturduğu koşul strateji scriptlerinde "Alarm Oluştur" penceresinde hiç
+listelenmez, dolayısıyla seçilip etkinleştirilemez. Çalışıyormuş gibi görünen
+ölü kod bırakmamak için bu satırlar dosyanın sonunda yorum halindedir; scripti
+indicator'a çevirirseniz aynen açabilirsiniz.
+
+İşlevsel alarmlar dinamik JSON üreten `alert()` çağrıları ve emirlerdeki
+`alert_message` parametresi ile sağlanır.
 
 TradingView'de alarm oluştururken:
 

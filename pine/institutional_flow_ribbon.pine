@@ -439,8 +439,10 @@ if showTable and barstate.islast
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  ALARMLAR
-//  Not: alertcondition() Pine tarafından STRATEJİ scriptlerinde derlenmez
-//  (yalnız indicator'da geçerlidir). Bu yüzden dinamik JSON alert() ile verilir.
+//  Not: alertcondition() bir strateji scriptinde DERLENİR, hata vermez — ancak
+//  oluşturduğu koşul strateji scriptlerinde "Alarm Oluştur" penceresinde HİÇ
+//  listelenmez, yani seçilip etkinleştirilemez. Sessizce çalışmayan kod olmasın
+//  diye aşağıda yorum halinde bırakıldı; işlevsel alarmlar alert() iledir.
 //  TradingView'de: Alarm Oluştur -> Koşul: bu strateji -> "Any alert() function call"
 //  veya emir bazlı alarmlarda {{strategy.order.alert_message}} kullanın.
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -457,6 +459,6 @@ if flipUp and not longTrigger
 if flipDown and not shortTrigger
     alert('{"action":"info","event":"ribbon_red","ticker":"' + syminfo.ticker + '","tf":"' + timeframe.period + '"}', alert.freq_once_per_bar_close)
 
-// ─── INDICATOR'A ÇEVİRİRSENİZ bu satırları açabilirsiniz ─────────────────────
+// ─── INDICATOR'A ÇEVİRİRSENİZ bu satırları açın (stratejide etkisizdirler) ───
 // alertcondition(longTrigger,  title = "IFR LONG",  message = '{"action":"buy","ticker":"{{ticker}}","tf":"{{interval}}","price":"{{close}}"}')
 // alertcondition(shortTrigger, title = "IFR SHORT", message = '{"action":"sell","ticker":"{{ticker}}","tf":"{{interval}}","price":"{{close}}"}')
