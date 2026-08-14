@@ -60,6 +60,27 @@ Sinyal yalnızca durum **değişiminde** üretilir (edge trigger), her barda de�
 hedef `risk × R/R` olarak pozisyon açıldığı anda sabitlenir; sonradan ATR
 değişse bile seviyeler kaymaz.
 
+**5. Sıkışma (yatay piyasa) filtresi**
+
+Stratejinin en büyük zaafı olan whipsaw'ı kesmek için iki bağımsız sıkışma
+göstergesi vardır:
+
+- **ADX** — `ta.dmi()` ile hesaplanır, eşiğin (varsayılan 20) altı "yön yok" demektir
+- **BBW** — Bollinger bant genişliği son 120 barın en dar %20'si içindeyse sıkışma
+
+Tespit yöntemi input ile seçilir: yalnız ADX, yalnız BBW, ikisi birden (AND, en
+gevşek eleme) veya herhangi biri (OR, en sıkı eleme — varsayılan).
+
+Sıkışma tespit edildiğinde **skor ne olursa olsun şerit gri kabul edilir**, yani
+o bölgede hiçbir işlem açılmaz. Bu, filtrenin en güzel yan etkisini doğurur:
+sıkışma çözüldüğü anda gri → yeşil/kırmızı geçişi doğal bir renk dönüşü ürettiği
+için **kırılım barı zaten sinyal olarak yakalanır**, ayrıca bir breakout mantığı
+yazmaya gerek kalmaz.
+
+> Filtre yalnızca mevcut zaman dilimine uygulanır, HTF skorlarına dokunmaz.
+> `Şerit Nötre Dönünce Kapat` açıksa sıkışmaya girilmesi açık pozisyonu da
+> kapatır — bu bilinçli bir davranıştır.
+
 ---
 
 ## Parametre tablosu
@@ -115,6 +136,20 @@ değişse bile seviyeler kaymaz.
 | Ters Sinyalde Döndür | açık | Kapalıysa yalnız pozisyonsuzken girilir |
 | Şerit Nötre Dönünce Kapat | kapalı | Açıksa SL/TP beklenmeden renk kaybında çıkılır |
 
+### ⑤ Sıkışma Filtresi
+
+| Parametre | Varsayılan | Ne işe yarar |
+|---|---|---|
+| Sıkışma Filtresini Kullan | **açık** | Kapatılırsa strateji bu filtre eklenmeden önceki davranışına döner |
+| Tespit Yöntemi | Herhangi biri (OR) | OR = en sıkı eleme, en az işlem. AND = en gevşek. Tek başına ADX klasik seçim |
+| ADX / DI Uzunluğu | 14 | Yön hareketi penceresi |
+| ADX Yumuşatma | 14 | ADX'in kendi yumuşatma periyodu |
+| ADX Eşiği | 20 | Altı "trendsiz" sayılır. Yükseltmek daha çok bölgeyi eler |
+| Bollinger Uzunluğu / Çarpanı | 20 / 2.0 | Bant genişliği hesabının temeli |
+| BBW Geriye Bakış | 120 | Bant genişliğinin kaç barlık geçmişe göre değerlendirileceği |
+| BBW Yüzdelik Eşiği | 20 | Genişlik son N barın en dar %X'i içindeyse sıkışma. Yükseltmek daha çok bölgeyi eler |
+| Sıkışma Bölgesini Göster | açık | Grafikte çok hafif gri tarama |
+
 ---
 
 ## Piyasa / zaman dilimi önerileri
@@ -134,16 +169,24 @@ Genel kural: **TF küçüldükçe eşikleri ve minimum onay sayısını yükselt
 Küçük zaman dilimlerinde skor sık sık eşik civarında salınır; eşiği yükseltmek
 bu salınımların sinyale dönüşmesini engeller.
 
+Sıkışma filtresi için: gün içi (15m ve altı) çalışırken varsayılan OR modu
+whipsaw'ı en çok kesen ayardır. 4 saat ve üzeri swing kullanımda OR fazla
+kısıtlayıcı olabilir, tek başına "ADX" veya "İkisi de (AND)" daha uygun düşer.
+Hacimsiz sembollerde ADX ve BBW hacme bağlı olmadığı için bu filtre tam
+kapasite çalışmaya devam eder — para akışı filtrelerini kapatmak zorunda
+kaldığınız durumlarda ana koruma katmanınız budur.
+
 ---
 
 ## Bilinen zayıf noktalar
 
-**1. Yatay piyasa en büyük düşman.** Sıkışma bölgelerinde EMA'lar iç içe geçer,
-dizilim bileşeni sıfıra yakınsar ve skor eşiklerin etrafında gidip gelir. Şerit
-çoğunlukla gri kalır (iyi), ama eşiğe yakın salınımlarda arka arkaya küçük
-zararlı işlemler (whipsaw) üretebilir. Çözüm: eşikleri ±50/±60'a çekin, minimum
-onayı 4 yapın, ya da ADX/BBW gibi bir sıkışma filtresi ekleyip skoru orada
-zorla nötre çevirin.
+**1. Yatay piyasa hâlâ en zor senaryo.** Sıkışma bölgelerinde EMA'lar iç içe
+geçer, dizilim bileşeni sıfıra yakınsar ve skor eşiklerin etrafında gidip gelir.
+⑤ numaralı sıkışma filtresi bu bölgelerin büyük kısmını eleyerek whipsaw'ı
+belirgin şekilde azaltır, ancak **sıfırlamaz**: ADX eşiğin hemen üstünde
+seyrederken (örneğin 21–25 bandı) piyasa hâlâ yönsüz olabilir ve filtre devreye
+girmez. Kalan riski düşürmek için eşikleri ±50/±60'a çekin, minimum onayı 4
+yapın veya ADX eşiğini 25'e yükseltin.
 
 **2. MTF onayı geç kalır.** 4 saatlik onay beklerken hareketin ilk üçte biri
 kaçar. Sıkı mod bunu daha da belirginleştirir. Trendlerin gövdesini yakalar,
@@ -177,6 +220,15 @@ gerçekte daha büyük olabilir.
 **8. Komisyon ve kaldıraç varsayılanları genel.** `%0.05` komisyon ve
 `%10 equity` pozisyon büyüklüğü tipik bir kripto spot senaryosudur. Kendi
 borsanızın oranlarıyla değiştirmeden alınan backtest sonucu anlamlı değildir.
+
+**9. Sıkışma filtresinin kendi bedeli var.** ADX gecikmeli bir göstergedir;
+sert bir trendin ilk barlarında hâlâ eşiğin altında olabilir ve filtre o girişi
+bloke eder. OR modu (varsayılan) en sıkı elemeyi yaptığı için işlem sayısını
+gözle görülür biçimde düşürür — az ama temiz sinyal isteyenler için doğru,
+sık işlem arayanlar için fazla kısıtlayıcıdır. Ayrıca uzun süreli düşük
+volatilite rejimlerinde (örneğin yaz aylarında bazı hisseler) BBW yüzdelik
+eşiği sürekli tetiklenip strateji haftalarca hiç işlem açmayabilir. Bu durumda
+`Tespit Yöntemi`ni tek başına "ADX"e alın veya filtreyi kapatın.
 
 ---
 

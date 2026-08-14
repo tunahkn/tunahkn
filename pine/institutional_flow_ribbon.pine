@@ -104,6 +104,26 @@ allowReverse  = input.bool(true, "Ters Sinyalde Pozisyonu Döndür (Reverse)", g
 exitOnNeutral = input.bool(false, "Şerit Nötre Dönünce Kapat", group = G_RK, tooltip = "Açık: rengin nötre/tersine dönmesi tek başına çıkış sebebidir (SL/TP beklenmez).")
 
 // ═══════════════════════════════════════════════════════════════════════════════
+//  5. GRUP — SIKIŞMA (YATAY PİYASA) FİLTRESİ
+//  Stratejinin en zayıf noktası yatay piyasadır: EMA'lar iç içe geçer, skor
+//  eşiklerin etrafında salınır ve arka arkaya küçük zararlı işlemler (whipsaw)
+//  üretir. Bu filtre sıkışma tespit ettiğinde skoru ZORLA nötre çevirir, yani
+//  şerit gri kalır ve o bölgede hiç işlem açılmaz.
+// ═══════════════════════════════════════════════════════════════════════════════
+string G_SQ = "⑤ Sıkışma (Yatay Piyasa) Filtresi"
+
+useSqueeze   = input.bool(true, "Sıkışma Filtresini Kullan", group = G_SQ, tooltip = "Kapatırsanız strateji bu filtre eklenmeden önceki davranışına döner.")
+sqMode       = input.string("Herhangi biri (OR)", "Tespit Yöntemi", options = ["ADX", "BBW", "İkisi de (AND)", "Herhangi biri (OR)"], group = G_SQ, tooltip = "OR = en sıkı eleme (ikisinden biri sıkışma derse işlem yok). AND = en gevşek. Tek başına ADX klasik seçimdir.")
+adxLen       = input.int(14, "ADX / DI Uzunluğu", minval = 1, group = G_SQ)
+adxSmooth    = input.int(14, "ADX Yumuşatma",     minval = 1, group = G_SQ)
+adxTh        = input.float(20, "ADX Eşiği (altı = trendsiz)", minval = 5, maxval = 50, step = 1, group = G_SQ)
+bbLen        = input.int(20, "Bollinger Uzunluğu", minval = 2, group = G_SQ)
+bbMult       = input.float(2.0, "Bollinger Çarpanı", minval = 0.1, step = 0.1, group = G_SQ)
+bbwLook      = input.int(120, "BBW Geriye Bakış", minval = 10, group = G_SQ, tooltip = "Bant genişliğinin kaç barlık geçmişe göre değerlendirileceği.")
+bbwPct       = input.float(20, "BBW Yüzdelik Eşiği", minval = 1, maxval = 99, step = 1, group = G_SQ, tooltip = "Bant genişliği son N barın en dar %X'i içindeyse sıkışma sayılır.")
+showSqueezeBg = input.bool(true, "Sıkışma Bölgesini Arka Planda Göster", group = G_SQ)
+
+// ═══════════════════════════════════════════════════════════════════════════════
 //  RENKLER
 // ═══════════════════════════════════════════════════════════════════════════════
 color C_BULL = color.new(#26A69A, 0)   // yeşil  — kurumsal alım baskısı
@@ -239,7 +259,28 @@ f_json(string act, float px, float sl, float tp, float sc) =>
 float scoreCur = f_alignScore()
 float baseline = f_baseline()
 float atrVal   = ta.atr(atrLen)
-int   stCur    = f_state(scoreCur)
+
+// ── SIKIŞMA TESPİTİ ──────────────────────────────────────────────────────────
+// 1) ADX: trend gücü ölçer, eşiğin altı "yön yok" demektir.
+[diPlus, diMinus, adxVal] = ta.dmi(adxLen, adxSmooth)
+bool adxSq = not na(adxVal) and adxVal < adxTh
+
+// 2) BBW: Bollinger bant genişliği son N barın en dar %X'i içindeyse sıkışma.
+float bbBasis  = ta.sma(close, bbLen)
+float bbDev    = bbMult * ta.stdev(close, bbLen)
+float bbw      = bbBasis != 0 ? bbDev * 2 / bbBasis * 100 : 0.0
+float bbwLimit = ta.percentile_nearest_rank(bbw, bbwLook, bbwPct)
+// na kontrolleri: ısınma barlarında sıkışma durumunun na'ya kayıp stCur'u
+// bozmasını engeller (na bir int, sonraki tüm karşılaştırmaları kirletirdi)
+bool  bbwSq    = not na(bbwLimit) and not na(bbw) and bbw <= bbwLimit
+
+bool sqRaw   = sqMode == "ADX" ? adxSq : sqMode == "BBW" ? bbwSq : sqMode == "İkisi de (AND)" ? (adxSq and bbwSq) : (adxSq or bbwSq)
+bool squeeze = useSqueeze and sqRaw
+
+// Sıkışma varsa skor ne olursa olsun şerit GRİ (nötr) kabul edilir -> işlem yok.
+// Sıkışma çözüldüğünde griden yeşile/kırmızıya geçiş doğal bir renk dönüşü
+// üretir; yani kırılım barı zaten sinyal olarak yakalanır.
+int stCur = squeeze ? 0 : f_state(scoreCur)
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  MULTI-TIMEFRAME (barmerge.lookahead_off ZORUNLU — geleceğe bakma yok)
@@ -406,6 +447,9 @@ plotBase = plot(baseline, "Kurumsal Şerit", color = ribbonCol, linewidth = 3)
 plotGlow = plot(showFill ? baseline - atrVal * glowMult : na, "Fill Sınırı", color = color.new(ribbonCol, 100), editable = false)
 fill(plotBase, plotGlow, color = color.new(ribbonCol, 85), title = "Şerit Gölgesi")
 
+// Sıkışma bölgesi — çok hafif gri tarama, sinyal kirliliği yaratmayacak yoğunlukta
+bgcolor(squeeze and showSqueezeBg ? color.new(color.gray, 90) : na, title = "Sıkışma Bölgesi")
+
 // Sinyal etiketleri
 plotshape(longTrigger,  title = "LONG Sinyali",  style = shape.labelup,   location = location.belowbar, color = C_BULL, textcolor = color.white, text = "LONG",  size = size.small)
 plotshape(shortTrigger, title = "SHORT Sinyali", style = shape.labeldown, location = location.abovebar, color = C_BEAR, textcolor = color.white, text = "SHORT", size = size.small)
@@ -413,7 +457,7 @@ plotshape(shortTrigger, title = "SHORT Sinyali", style = shape.labeldown, locati
 // ═══════════════════════════════════════════════════════════════════════════════
 //  MTF DURUM PANELİ (sağ üst köşe)
 // ═══════════════════════════════════════════════════════════════════════════════
-var table panel = table.new(position.top_right, 2, 7, border_width = 1, frame_color = color.new(color.gray, 60), frame_width = 1)
+var table panel = table.new(position.top_right, 2, 8, border_width = 1, frame_color = color.new(color.gray, 60), frame_width = 1)
 
 if showTable and barstate.islast
     table.cell(panel, 0, 0, "KURUMSAL AKIŞ", bgcolor = color.new(color.black, 20), text_color = color.white, text_size = size.small)
@@ -434,8 +478,11 @@ if showTable and barstate.islast
     table.cell(panel, 0, 5, "Akış L/S (min " + str.tostring(needCnt) + ")", bgcolor = color.new(color.gray, 85), text_color = color.white, text_size = size.small)
     table.cell(panel, 1, 5, str.tostring(smLongCnt) + " / " + str.tostring(smShortCnt), bgcolor = color.new(smLongCnt >= needCnt ? C_BULL : smShortCnt >= needCnt ? C_BEAR : C_FLAT, 40), text_color = color.white, text_size = size.small)
 
-    table.cell(panel, 0, 6, "Pozisyon", bgcolor = color.new(color.gray, 85), text_color = color.white, text_size = size.small)
-    table.cell(panel, 1, 6, posSign > 0 ? "LONG" : posSign < 0 ? "SHORT" : "YOK", bgcolor = color.new(f_stateCol(posSign), 40), text_color = color.white, text_size = size.small)
+    table.cell(panel, 0, 6, "Sıkışma", bgcolor = color.new(color.gray, 85), text_color = color.white, text_size = size.small)
+    table.cell(panel, 1, 6, not useSqueeze ? "KAPALI" : squeeze ? "VAR (ADX " + str.tostring(adxVal, "#.#") + ")" : "YOK", bgcolor = color.new(squeeze ? color.orange : C_FLAT, 40), text_color = color.white, text_size = size.small)
+
+    table.cell(panel, 0, 7, "Pozisyon", bgcolor = color.new(color.gray, 85), text_color = color.white, text_size = size.small)
+    table.cell(panel, 1, 7, posSign > 0 ? "LONG" : posSign < 0 ? "SHORT" : "YOK", bgcolor = color.new(f_stateCol(posSign), 40), text_color = color.white, text_size = size.small)
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  ALARMLAR
