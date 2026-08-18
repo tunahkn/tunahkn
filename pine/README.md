@@ -1,10 +1,40 @@
-# Institutional Flow Ribbon (IFR)
+# Institutional Flow Ribbon PRO
 
-Pine Script **v6** stratejisi. 7 EMA'yı ekranda ayrı ayrı çizmek yerine tek bir
-"hizalanma skoru"na indirger ve sadece **tek bir çizginin renk değişimiyle**
-sinyal üretir: yeşil = long, kırmızı = short, gri = işlem yok.
+TradingView / Pine Script **v6** stratejisi. Yedi EMA'yı ekranda ayrı ayrı çizmek
+yerine tek bir "hizalanma skoru"na indirger ve yalnızca **tek bir çizginin renk
+değişimiyle** sinyal üretir: yeşil = long, kırmızı = short, gri = işlem yok.
 
-Dosya: [`institutional_flow_ribbon.pine`](institutional_flow_ribbon.pine)
+**Dosya:** [`ifr_master_pro.pine`](ifr_master_pro.pine)
+
+![IFR PRO önizleme](ifr_preview.svg)
+
+> Yukarıdaki görsel dekoratif değil: stratejinin gerçek skor algoritması sentetik
+> fiyat verisi üzerinde çalıştırılıp çizildi. Şeridin renk geçişleri, sıkışma
+> bölgesindeki sessizlik ve sinyal noktaları hesaplanmış sonuçlardır.
+
+---
+
+## Bu sürümde ne değişti
+
+Önceki dosya TradingView'de derleme hatası veriyordu. Elimde Pine derleyicisi
+olmadığı için hangi satırın patladığını göremedim; bu yüzden hata avlamak yerine
+**riskli yapıların tamamını eledim.** Çıkarılanlar ve yerlerine konanlar:
+
+| Çıkarılan | Neden | Yerine |
+|---|---|---|
+| `array` + `for` döngüsü | `request.security()` içinde çağrılan fonksiyonda dizi/döngü en kırılgan kombinasyon; ayrıca `for i = 0 to n-1` ifadesi `n = 0` iken Pine'da **geriye doğru** sayar | Yedi EMA açık açık işlenir, döngü yok |
+| Fonksiyon içinde `s[1]` | Yerel değişken geçmişi, fonksiyon her barda tam bir kez çağrılmazsa tutarsız seri üretir | PineCoders'ın standart `f_sec()` sarmalayıcısı: `_src[1]` parametre üzerinden |
+| `input.source()` | `request.security()` bağlamında kaynak çözümlemesi belirsizleşebiliyor | Doğrudan `close` |
+| `ta.percentile_nearest_rank()` | Nadir kullanılan fonksiyon, argüman nitelikleri (simple/series) katı | `ta.lowest()` ile darlık karşılaştırması |
+| Çok satıra yayılmış `strategy()` | Satır devamı kuralı (girinti 4'ün katı olmamalı) sessiz hata kaynağı | Tek satır |
+
+Ayrıca `ta.dmi()` tuple'ının kullanılmayan `diPlus`/`diMinus` değerleri artık
+panelde trend yönü olarak gösteriliyor — hem uyarı kalktı hem bilgi kazanıldı.
+
+Yapı; parantez dengesi, girinti tutarlılığı ve satır sonu operatörü açısından
+otomatik denetimden geçirildi. **Ama uyarım net: bu dosya TradingView'de
+derlenerek doğrulanmadı**, bu ortamda Pine derleyicisi yok. Hata alırsanız
+mesajın tam metnini gönderin, tek turda kapatayım.
 
 ---
 
@@ -12,261 +42,178 @@ Dosya: [`institutional_flow_ribbon.pine`](institutional_flow_ribbon.pine)
 
 **1. Hizalanma skoru (-100 … +100)**
 
-İki bileşenin ağırlıklı toplamıdır:
-
 | Bileşen | Hesap | Ne ölçer |
 |---|---|---|
 | Fiyat konumu | Her aktif EMA için `fiyat > EMA ? +1 : -1`, ortalaması ×100 | Fiyat kümenin neresinde |
-| Dizilim (fan) | Ardışık EMA çiftleri için `hızlı > yavaş ? +1 : -1`, ortalaması ×100 | Trend yapısı bozulmuş mu |
+| Dizilim (fan) | Ardışık aktif EMA çiftleri için `hızlı > yavaş ? +1 : -1`, ortalaması ×100 | Trend yapısı bozulmuş mu |
 
-Skor `Yeşil Eşiği`ni geçerse şerit yeşil, `Kırmızı Eşiği`nin altına inerse kırmızı,
-arada kalırsa gri olur. Gri bölgede hiçbir işlem açılmaz — sinyal kirliliğini
-engelleyen asıl mekanizma budur.
+Skor `Yeşil Eşiği`ni geçerse şerit yeşil, `Kırmızı Eşiği`nin altına inerse
+kırmızı, arada kalırsa gri. **Gri bölgede hiçbir işlem açılmaz** — sinyal
+kirliliğini engelleyen asıl mekanizma bu. Kaç EMA açık olursa olsun skor daima
+-100/+100 aralığında kalır, yani eşikleriniz anlamını korur.
 
-Ekrana çizilen tek çizgi (`baseline`) aktif EMA'ların ağırlıklı ortalamasıdır;
-"Hızlıya Ağırlıklı" modda ağırlık `1/periyot` olduğu için çizgi daha tepkiseldir.
+**2. Kurumsal para akışı** — beş bağımsız filtre, "en az N onay" mantığı: CVD,
+OBV eğimi, relative volume, MFI(14), seans VWAP. Üçü (`ta.obv`, `ta.vwap`,
+`ta.mfi`) hacim verisi olmayan sembollerde scripti runtime hatasıyla durdurduğu
+için aynı formüllerle `nz(volume)` üzerinden elle yazıldı.
 
-**2. Kurumsal para akışı onayı**
+**3. Multi-timeframe** — aynı skor fonksiyonu iki üst zaman diliminde çalıştırılır.
+Sıkı mod: iki HTF de aynı renk. Gevşek mod: ters renk olmasın.
 
-Beş bağımsız filtre, "en az N tanesi" mantığıyla çalışır:
+**Repaint yok:** skor `request.security()` çağrısının *içinde* bir bar geri
+kaydırılır, yani daima kapanmış HTF barı okunur; üstüne `barmerge.lookahead_off`.
+`request.security(...)[1]` yazmak chart barını kaydırırdı — bu yanlış olurdu.
 
-- **CVD** — bar içi alıcı/satıcı hacmi kapanışın bar aralığındaki konumuyla ayrıştırılır, kümülatif delta kendi EMA'sının üstünde/altında mı
-- **OBV eğimi** — OBV kendi EMA'sının üstünde/altında mı
-- **Relative Volume** — `hacim > SMA(hacim, 20) × 1.5` (yönden bağımsız: kurumsal ilgi var mı)
-- **MFI(14)** — long için > 50, short için < 50
-- **Session VWAP** — fiyat günlük VWAP'ın üstünde/altında mı
+**4. Giriş / çıkış** — sinyal yalnız durum değişiminde (edge trigger), `pyramiding = 0`,
+stop ve hedef pozisyon açılırken sabitlenir, opsiyonel trailing ve reverse.
 
-OBV, VWAP ve MFI hacimsiz sembollerde çalışmayı durduran runtime hatası
-vermemeleri için `ta.obv` / `ta.vwap` / `ta.mfi` yerine aynı formülle elle
-hesaplanmıştır.
-
-**3. Multi-timeframe onayı**
-
-Aynı skor fonksiyonu `request.security()` ile HTF1 ve HTF2'de çalıştırılır.
-
-- **Sıkı (Strict):** her iki HTF de aynı renkte olmalı
-- **Gevşek (Loose):** HTF'ler ters renkte olmasın (nötr kabul edilir)
-
-**Repaint yok:** skor, `request.security` çağrısının *içinde* bir bar geri
-kaydırılır (`s[1]`), yani daima **kapanmış** HTF barı kullanılır; ayrıca
-`barmerge.lookahead_off` zorunlu tutulmuştur. `request.security(...)[1]` yazmak
-chart barını kaydırırdı — bu koddaki yaklaşım HTF barını kaydırır, doğru olan
-budur.
-
-**4. Giriş / çıkış**
-
-Sinyal yalnızca durum **değişiminde** üretilir (edge trigger), her barda değil.
-`pyramiding = 0` ile aynı yönde ikinci giriş engellenir. Stop `ATR × çarpan`,
-hedef `risk × R/R` olarak pozisyon açıldığı anda sabitlenir; sonradan ATR
-değişse bile seviyeler kaymaz.
-
-**5. Sıkışma (yatay piyasa) filtresi**
-
-Stratejinin en büyük zaafı olan whipsaw'ı kesmek için iki bağımsız sıkışma
-göstergesi vardır:
-
-- **ADX** — `ta.dmi()` ile hesaplanır, eşiğin (varsayılan 20) altı "yön yok" demektir
-- **BBW** — Bollinger bant genişliği son 120 barın en dar %20'si içindeyse sıkışma
-
-Tespit yöntemi input ile seçilir: yalnız ADX, yalnız BBW, ikisi birden (AND, en
-gevşek eleme) veya herhangi biri (OR, en sıkı eleme — varsayılan).
-
-Sıkışma tespit edildiğinde **skor ne olursa olsun şerit gri kabul edilir**, yani
-o bölgede hiçbir işlem açılmaz. Bu, filtrenin en güzel yan etkisini doğurur:
-sıkışma çözüldüğü anda gri → yeşil/kırmızı geçişi doğal bir renk dönüşü ürettiği
-için **kırılım barı zaten sinyal olarak yakalanır**, ayrıca bir breakout mantığı
-yazmaya gerek kalmaz.
-
-> Filtre yalnızca mevcut zaman dilimine uygulanır, HTF skorlarına dokunmaz.
-> `Şerit Nötre Dönünce Kapat` açıksa sıkışmaya girilmesi açık pozisyonu da
-> kapatır — bu bilinçli bir davranıştır.
+**5. Sıkışma filtresi** — ADX eşik altı ve/veya Bollinger bant genişliğinin son
+120 barın en darına yakın olması. Tespit edilince **skor ne olursa olsun şerit
+gri kabul edilir.** Bunun güzel yan etkisi: sıkışma çözüldüğünde gri → renkli
+geçişi doğal bir dönüş ürettiği için kırılım barı ayrı bir breakout kodu
+yazmadan yakalanır.
 
 ---
 
-## Parametre tablosu
+## Parametreler
 
-### ① MA Ayarları
-
-| Parametre | Varsayılan | Ne işe yarar |
+### 1. Şerit (MA)
+| Parametre | Varsayılan | İşlevi |
 |---|---|---|
-| Kaynak | `close` | EMA'ların besleneceği fiyat serisi |
-| Fiyat Konumu Ağırlığı (%) | 50 | Skorun yüzde kaçı "fiyat EMA'nın üstünde mi"den gelsin; kalanı dizilim bileşeni. Yükseltmek → daha hızlı tepki, düşürmek → daha çok yapı odaklı |
-| Yeşil Eşiği | 40 | Şeridin yeşile dönmesi için gereken minimum skor. Yükseltmek sinyal sayısını azaltır, kalitesini artırır |
-| Kırmızı Eşiği | -40 | Short için ayna eşik |
-| Şerit Ağırlık Modu | Hızlıya Ağırlıklı | Baseline çizgisinin harmanı. "Eşit" seçilirse çizgi yavaşlar, daha az gürültülü olur |
-| Şerit Altına Fill | açık | Çizginin altına ATR ölçekli hafif gölge (transparency 85) |
-| Fill Kalınlığı (ATR ×) | 0.35 | Gölgenin dikey kalınlığı |
-| EMA 1–7 + uzunlukları | 8, 13, 21, 34, 55, 89, 200 | Her biri tek tek kapatılabilir; skor kalan EMA sayısına göre otomatik normalize edilir |
+| Fiyat Konumu Ağırlığı (%) | 50 | Skorun konum/dizilim dengesi |
+| Yeşil / Kırmızı Eşiği | 40 / -40 | Renk değişim sınırları; yükseltmek sinyali azaltır, kaliteyi artırır |
+| Şerit Ağırlık Modu | Hızlıya Ağırlıklı | Baseline harmanı; "Eşit" daha yavaş ve sakin |
+| EMA 1–7 | 8, 13, 21, 34, 55, 89, 200 | Her biri tek tek kapatılabilir |
 
-### ② Kurumsal Para Akışı
-
-| Parametre | Varsayılan | Ne işe yarar |
+### 2. Kurumsal Para Akışı
+| Parametre | Varsayılan | İşlevi |
 |---|---|---|
-| Gereken Minimum Onay | 3 | Aktif 5 filtreden kaçı sinyal yönünü desteklemeli. 4–5 → çok az ama çok seçici sinyal |
-| CVD Yönü + EMA | açık, 21 | Kümülatif delta sinyal çizgisi periyodu |
-| OBV Eğimi + EMA | açık, 21 | OBV'nin karşılaştırılacağı EMA periyodu |
-| Relative Volume + SMA | açık, 20 | Ortalama hacim penceresi |
-| Hacim Çarpanı | 1.5 | Barın "kurumsal ilgi" sayılması için ortalamanın kaç katı olmalı |
-| MFI + Uzunluk | açık, 14 | Para akışı endeksi periyodu |
+| Gereken Minimum Onay | 3 | Aktif 5 filtreden kaçı yönü desteklemeli |
+| CVD / OBV EMA | 21 / 21 | Sinyal çizgisi periyotları |
+| Relative Volume SMA / Çarpan | 20 / 1.5 | Hacim ortalaması ve eşiği |
+| MFI Uzunluk | 14 | Para akışı endeksi periyodu |
 | Session VWAP | açık | Fiyatın günlük VWAP'a göre konumu |
 
-### ③ Multi-Timeframe
-
-| Parametre | Varsayılan | Ne işe yarar |
+### 3. Multi-Timeframe
+| Parametre | Varsayılan | İşlevi |
 |---|---|---|
-| MTF Onayını Kullan | açık | Kapatılırsa yalnız mevcut TF ile çalışır |
 | HTF 1 / HTF 2 | 60 / 240 | Üst zaman dilimleri |
-| MTF Modu | Sıkı | Sıkı: iki HTF de aynı renk. Gevşek: ters renk olmasın |
-| Sadece Kapanmış HTF Barı | açık | **Açık bırakın.** Kapatmak repaint'e yol açar |
-| MTF Panelini Göster | açık | Sağ üstteki durum tablosu |
+| Sıkı Mod | açık | Kapalı = gevşek (nötr kabul edilir) |
+| Sadece Kapanmış HTF Barı | açık | **Açık bırakın**, kapatmak repaint demek |
 
-### ④ Risk Yönetimi
-
-| Parametre | Varsayılan | Ne işe yarar |
+### 4. Risk Yönetimi
+| Parametre | Varsayılan | İşlevi |
 |---|---|---|
-| Long / Short İşlemler | açık / açık | Tek yön test etmek için |
-| Sadece Renk Dönüş Barında Gir | açık | Açık: sinyal yalnız rengin döndüğü barda. Kapalı: renk zaten doğruyken onaylar tamamlanınca da girer (daha çok işlem) |
-| ATR Uzunluğu | 14 | Volatilite ölçüm penceresi |
+| Sadece Renk Dönüş Barında Gir | açık | Kapalı = onaylar tamamlanınca da girer, daha çok işlem |
 | Stop Loss (ATR ×) | 1.5 | Stop mesafesi |
-| Take Profit Kullan | açık | Kapatılırsa çıkış yalnız stop / trailing / renk kaybı ile olur |
-| Risk / Reward | 2.0 | Hedef = risk mesafesi × bu oran |
-| Trailing Stop | kapalı | Açılırsa aşağıdaki iki çarpanla çalışır |
-| Trailing Aktivasyon (ATR ×) | 1.0 | Trailing'in devreye gireceği kâr mesafesi |
-| Trailing Mesafe (ATR ×) | 0.7 | Zirveden ne kadar geride sürünsün |
-| Ters Sinyalde Döndür | açık | Kapalıysa yalnız pozisyonsuzken girilir |
-| Şerit Nötre Dönünce Kapat | kapalı | Açıksa SL/TP beklenmeden renk kaybında çıkılır |
+| Risk / Reward | 2.0 | Hedef = risk × bu oran |
+| Trailing Stop | kapalı | Aktivasyon 1.0 ATR, mesafe 0.7 ATR |
+| Reverse | açık | Ters sinyalde pozisyonu döndürür |
+| Şerit Nötre Dönünce Kapat | kapalı | Açıksa sıkışmaya girmek de pozisyonu kapatır |
 
-### ⑤ Sıkışma Filtresi
-
-| Parametre | Varsayılan | Ne işe yarar |
+### 5. Sıkışma Filtresi
+| Parametre | Varsayılan | İşlevi |
 |---|---|---|
-| Sıkışma Filtresini Kullan | **açık** | Kapatılırsa strateji bu filtre eklenmeden önceki davranışına döner |
-| Tespit Yöntemi | Herhangi biri (OR) | OR = en sıkı eleme, en az işlem. AND = en gevşek. Tek başına ADX klasik seçim |
-| ADX / DI Uzunluğu | 14 | Yön hareketi penceresi |
-| ADX Yumuşatma | 14 | ADX'in kendi yumuşatma periyodu |
-| ADX Eşiği | 20 | Altı "trendsiz" sayılır. Yükseltmek daha çok bölgeyi eler |
-| Bollinger Uzunluğu / Çarpanı | 20 / 2.0 | Bant genişliği hesabının temeli |
-| BBW Geriye Bakış | 120 | Bant genişliğinin kaç barlık geçmişe göre değerlendirileceği |
-| BBW Yüzdelik Eşiği | 20 | Genişlik son N barın en dar %X'i içindeyse sıkışma. Yükseltmek daha çok bölgeyi eler |
-| Sıkışma Bölgesini Göster | açık | Grafikte çok hafif gri tarama |
+| Tespit Yöntemi | Herhangi biri (OR) | OR = en sıkı eleme. Tek başına "ADX" daha az bloke eder |
+| ADX Eşiği | 20 | Altı trendsiz sayılır |
+| BBW Geriye Bakış / Darlık Çarpanı | 120 / 1.2 | Bant genişliği son N barın en darının bu katı içindeyse sıkışma |
+
+### 6. Görsel
+| Parametre | Varsayılan | İşlevi |
+|---|---|---|
+| Şerit Kalınlığı | 3 | Ana çizgi kalınlığı |
+| Gradient Fill | açık | Şeridin altında iki katmanlı gölge |
+| Mumları Şerit Rengiyle Boya | kapalı | Tüm mumlar rejim rengini alır |
+| Stop / Hedef Çizgileri | açık | Pozisyondayken seviyeler grafikte |
+| Sıkışma Arka Planı | açık | Turuncu tarama |
+| Panel Konumu | Sağ Üst | Dört köşeden biri |
 
 ---
 
 ## Piyasa / zaman dilimi önerileri
 
-| Piyasa | TF | HTF1 / HTF2 | Eşikler | Min. onay | ATR × | R/R | Not |
+| Piyasa | TF | HTF1 / HTF2 | Eşikler | Min. onay | ATR × | R/R | Sıkışma |
 |---|---|---|---|---|---|---|---|
-| Kripto (BTC, ETH) | 15m | 60 / 240 | ±40 | 3 | 1.5 | 2.0 | Varsayılanlar bu senaryo için ayarlandı |
-| Kripto (altcoin) | 1h | 240 / D | ±50 | 3 | 2.0 | 2.0 | Volatilite yüksek, stop'u genişletin |
-| Kripto swing | 4h | D / W | ±40 | 2–3 | 2.0 | 2.5 | Gevşek MTF modu daha çok fırsat verir |
-| BIST / hisse (gün içi) | 15m | 60 / D | ±45 | 3 | 1.5 | 1.5–2.0 | VWAP filtresi burada en değerli; seans açılış gürültüsüne dikkat |
-| BIST / hisse (pozisyon) | D | W / M | ±35 | 2 | 2.5 | 3.0 | Sıkı MTF modu D+W+M ile çok az ama güçlü sinyal üretir |
-| Forex | 1h | 240 / D | ±45 | 2 | 1.5 | 2.0 | Tick hacmi kullanılır; RVOL ve CVD zayıflar, min. onayı 2'ye çekin |
-| Endeks / vadeli (hacimsiz semboller) | 1h | 240 / D | ±40 | 1–2 | 1.5 | 2.0 | Hacme dayalı filtreleri (CVD/OBV/RVOL/MFI) kapatın |
-| Scalp | 1–5m | 15 / 60 | ±55 | 4 | 1.0 | 1.5 | Komisyon oranını gerçek borsanıza göre güncelleyin, aksi halde sonuçlar yanıltıcı olur |
+| Kripto (BTC, ETH) | 15m | 60 / 240 | ±40 | 3 | 1.5 | 2.0 | OR |
+| Kripto (altcoin) | 1h | 240 / D | ±50 | 3 | 2.0 | 2.0 | OR |
+| Kripto swing | 4h | D / W | ±40 | 2–3 | 2.0 | 2.5 | ADX |
+| BIST / hisse gün içi | 15m | 60 / D | ±45 | 3 | 1.5 | 1.5–2.0 | OR |
+| BIST / hisse pozisyon | D | W / M | ±35 | 2 | 2.5 | 3.0 | ADX |
+| Forex | 1h | 240 / D | ±45 | 2 | 1.5 | 2.0 | ADX |
+| Endeks (hacimsiz) | 1h | 240 / D | ±40 | 1–2 | 1.5 | 2.0 | OR |
+| Scalp | 1–5m | 15 / 60 | ±55 | 4 | 1.0 | 1.5 | OR |
 
-Genel kural: **TF küçüldükçe eşikleri ve minimum onay sayısını yükseltin.**
-Küçük zaman dilimlerinde skor sık sık eşik civarında salınır; eşiği yükseltmek
-bu salınımların sinyale dönüşmesini engeller.
-
-Sıkışma filtresi için: gün içi (15m ve altı) çalışırken varsayılan OR modu
-whipsaw'ı en çok kesen ayardır. 4 saat ve üzeri swing kullanımda OR fazla
-kısıtlayıcı olabilir, tek başına "ADX" veya "İkisi de (AND)" daha uygun düşer.
-Hacimsiz sembollerde ADX ve BBW hacme bağlı olmadığı için bu filtre tam
-kapasite çalışmaya devam eder — para akışı filtrelerini kapatmak zorunda
-kaldığınız durumlarda ana koruma katmanınız budur.
+Genel kural: **TF küçüldükçe eşikleri ve minimum onayı yükseltin.** Hacimsiz
+sembollerde (endeksler) para akışı filtrelerini kapatın; ADX ve BBW hacme bağlı
+olmadığı için sıkışma filtresi ana koruma katmanınız olarak çalışmaya devam eder.
 
 ---
 
 ## Bilinen zayıf noktalar
 
-**1. Yatay piyasa hâlâ en zor senaryo.** Sıkışma bölgelerinde EMA'lar iç içe
-geçer, dizilim bileşeni sıfıra yakınsar ve skor eşiklerin etrafında gidip gelir.
-⑤ numaralı sıkışma filtresi bu bölgelerin büyük kısmını eleyerek whipsaw'ı
-belirgin şekilde azaltır, ancak **sıfırlamaz**: ADX eşiğin hemen üstünde
-seyrederken (örneğin 21–25 bandı) piyasa hâlâ yönsüz olabilir ve filtre devreye
-girmez. Kalan riski düşürmek için eşikleri ±50/±60'a çekin, minimum onayı 4
-yapın veya ADX eşiğini 25'e yükseltin.
+**1. Yatay piyasa hâlâ en zor senaryo.** Sıkışma filtresi bölgelerin büyük kısmını
+eler ama sıfırlamaz: ADX 21–25 bandında gezerken piyasa yönsüz olabilir ve filtre
+devreye girmez. Eşikleri ±50/±60'a çekin veya ADX eşiğini 25 yapın.
 
-**2. MTF onayı geç kalır.** 4 saatlik onay beklerken hareketin ilk üçte biri
-kaçar. Sıkı mod bunu daha da belirginleştirir. Trendlerin gövdesini yakalar,
-dip/tepe yakalamaz — bu bilinçli bir tasarım tercihidir.
+**2. MTF onayı geç kalır.** 4 saatlik onayı beklerken hareketin ilk üçte biri kaçar.
+Trendin gövdesini yakalar, dip/tepe yakalamaz — bu bilinçli bir tercih.
 
-**3. Sadece renk dönüş barında giriş, fırsat kaçırır.** `flipOnly` açıkken renk
-yeşile döndüğü barda para akışı onayı henüz tamamlanmamışsa o sinyal tamamen
-kaybedilir; renk yeşil kalmaya devam etse bile tekrar tetiklenmez. Daha çok
-işlem isteyenler bu ayarı kapatmalı.
+**3. Sadece renk dönüş barında giriş fırsat kaçırır.** Renk döndüğü barda para
+akışı onayı tamamlanmamışsa o sinyal tamamen kaybedilir, renk yeşil kalsa bile
+tekrar tetiklenmez.
 
-**4. CVD gerçek order flow değil.** TradingView'de bar içi alım/satım ayrımı
-yoktur; kapanışın bar aralığındaki konumundan türetilen bir yaklaşımdır. Uzun
-fitilli barlarda yanıltabilir. Gerçek delta için borsa bazlı footprint verisi
-gerekir.
+**4. CVD gerçek order flow değil.** TradingView'de bar içi alım/satım ayrımı yok;
+kapanışın bar aralığındaki konumundan türetilen bir yaklaşım. Uzun fitilli
+barlarda yanıltır.
 
-**5. Kümülatif CVD ve OBV başlangıç noktasına bağlıdır.** Grafikte yüklü bar
-sayısı değişince (farklı abonelik seviyeleri, farklı zoom geçmişi) bu iki
-serinin mutlak değeri değişir. Kendi EMA'larıyla karşılaştırıldıkları için etki
-sınırlıdır ama sıfır değildir — farklı hesaplarda birebir aynı işlem listesini
+**5. Kümülatif CVD ve OBV başlangıç noktasına bağlı.** Grafikte yüklü bar sayısı
+değişince mutlak değerleri değişir; farklı hesaplarda birebir aynı işlem listesini
 beklemeyin.
 
-**6. Gap'ler stop mesafesini aşabilir.** Stop, pozisyon açılırken sabitlenir;
-hafta sonu / seans arası boşluklarda gerçekleşen zarar hesaplanandan büyük
-olabilir. Backtest sonuçları bu yüzden gerçeğe göre iyimserdir.
+**6. Gap'ler stop mesafesini aşabilir.** Stop pozisyon açılırken sabitlenir; seans
+arası boşluklarda gerçek zarar hesaplanandan büyük olur. Backtest bu yüzden iyimser.
 
-**7. Emirler bir sonraki barın açılışında dolar.** `calc_on_every_tick = false`
-olduğu için sinyal bar kapanışında üretilir, emir sonraki barın açılışında
-gerçekleşir. Hızlı piyasalarda bu kayma (slippage 2 tick olarak modellendi)
-gerçekte daha büyük olabilir.
+**7. Emirler sonraki barın açılışında dolar.** Sinyal bar kapanışında üretilir.
+Hızlı piyasada gerçek kayma modellenen 2 tick'ten büyük olabilir.
 
-**8. Komisyon ve kaldıraç varsayılanları genel.** `%0.05` komisyon ve
-`%10 equity` pozisyon büyüklüğü tipik bir kripto spot senaryosudur. Kendi
-borsanızın oranlarıyla değiştirmeden alınan backtest sonucu anlamlı değildir.
+**8. Komisyon varsayılanı geneldir.** %0.05 ve %10 equity tipik kripto spot
+senaryosu. Kendi borsanızın oranlarıyla değiştirmeden alınan sonuç anlamsızdır.
 
-**9. Sıkışma filtresinin kendi bedeli var.** ADX gecikmeli bir göstergedir;
-sert bir trendin ilk barlarında hâlâ eşiğin altında olabilir ve filtre o girişi
-bloke eder. OR modu (varsayılan) en sıkı elemeyi yaptığı için işlem sayısını
-gözle görülür biçimde düşürür — az ama temiz sinyal isteyenler için doğru,
-sık işlem arayanlar için fazla kısıtlayıcıdır. Ayrıca uzun süreli düşük
-volatilite rejimlerinde (örneğin yaz aylarında bazı hisseler) BBW yüzdelik
-eşiği sürekli tetiklenip strateji haftalarca hiç işlem açmayabilir. Bu durumda
-`Tespit Yöntemi`ni tek başına "ADX"e alın veya filtreyi kapatın.
+**9. Sıkışma filtresinin kendi bedeli var.** ADX gecikmelidir, sert trendin ilk
+barlarında hâlâ eşiğin altında olup girişi bloke edebilir. OR modu işlem sayısını
+belirgin düşürür; uzun düşük volatilite rejimlerinde strateji haftalarca sessiz
+kalabilir.
+
+**10. Etiketlerdeki Türkçe karakterler sadeleştirildi.** Kopyala-yapıştır
+zincirinde bozulma riskini sıfırlamak için arayüz metinleri ASCII yazıldı
+("Ayarlari"). Derlemeyi etkilemez; diakritikli sürüm isterseniz geri koyarım.
 
 ---
 
-## Alarm kurulumu
+## Alarmlar
 
-`alertcondition()` bir strateji scriptinde **derlenir, hata vermez** — ancak
-oluşturduğu koşul strateji scriptlerinde "Alarm Oluştur" penceresinde hiç
-listelenmez, dolayısıyla seçilip etkinleştirilemez. Çalışıyormuş gibi görünen
-ölü kod bırakmamak için bu satırlar dosyanın sonunda yorum halindedir; scripti
-indicator'a çevirirseniz aynen açabilirsiniz.
+`alertcondition()` strateji scriptinde **derlenir, hata vermez** — ancak
+oluşturduğu koşul "Alarm Oluştur" penceresinde listelenmez, seçilemez. Bu yüzden
+işlevsel alarmlar `alert()` ve emirlerdeki `alert_message` ile verilir.
 
-İşlevsel alarmlar dinamik JSON üreten `alert()` çağrıları ve emirlerdeki
-`alert_message` parametresi ile sağlanır.
-
-TradingView'de alarm oluştururken:
-
-- **Koşul:** IFR stratejisi → **"Any alert() function call"** seçin, mesaj alanını boş bırakın (JSON otomatik gelir), veya
-- Emir bazlı alarmlarda mesaj alanına `{{strategy.order.alert_message}}` yazın.
-
-Gönderilen format:
+TradingView'de: **Alarm Oluştur → Koşul: IFR PRO → "Any alert() function call"**,
+veya emir bazlı alarmda mesaj alanına `{{strategy.order.alert_message}}`.
 
 ```json
-{"action":"buy","ticker":"BTCUSDT","exchange":"BINANCE","tf":"15","price":64250.5,"sl":63800.0,"tp":65150.5,"score":78.57,"time":1723600000000}
+{"action":"buy","ticker":"BTCUSDT","exchange":"BINANCE","tf":"15","price":64250.5,"sl":63800.0,"tp":65150.5,"score":78.57}
 ```
 
-`action` alanı `buy`, `sell`, `close_long`, `close_short` veya bilgi amaçlı
-`info` (şerit renk değişimi) değerlerini alır.
+`action`: `buy`, `sell`, `close_long`, `close_short`.
 
 ---
 
 ## Kurulum
 
 1. TradingView → Pine Editor → yeni boş script
-2. `institutional_flow_ribbon.pine` içeriğini yapıştırın
+2. `ifr_master_pro.pine` içeriğini yapıştırın
 3. **Save** → **Add to chart**
-4. Strateji ayarlarından komisyon/slippage değerlerini kendi borsanıza göre güncelleyin
-5. Strategy Tester'da en az 100+ işlem gören bir dönemde test edin
+4. Komisyon ve slippage'i kendi borsanıza göre güncelleyin
+5. Strategy Tester'da 100+ işlem gören bir dönemde test edin
 
-> Bu kod eğitim ve araştırma amaçlıdır, yatırım tavsiyesi değildir. Gerçek
-> parayla kullanmadan önce kendi verilerinizle ileri testten (forward test)
-> geçirin.
+> Eğitim ve araştırma amaçlıdır, yatırım tavsiyesi değildir. Gerçek parayla
+> kullanmadan önce ileri testten geçirin.

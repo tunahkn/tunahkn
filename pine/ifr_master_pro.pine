@@ -1,0 +1,466 @@
+//@version=6
+// ═══════════════════════════════════════════════════════════════════════════════
+//  INSTITUTIONAL FLOW RIBBON — MASTER PRO
+//  ---------------------------------------------------------------------------
+//  7 EMA'yi tek bir serit halinde toplar, sadece renk degisiminde sinyal uretir.
+//  Yesil = long, Kirmizi = short, Gri = islem yok.
+//
+//  DERLEME GUVENLIGI NOTU:
+//  Bu surumde bilerek SADECE temel Pine yapilari kullanildi:
+//    - dizi (array) ve for dongusu YOK  -> skor acik acik yazildi
+//    - fonksiyon icinde yerel degisken gecmisi ([1]) YOK
+//    - input.source YOK (request.security icinde belirsizlik yaratabiliyor)
+//    - egzotik ta.* fonksiyonu YOK (percentile vb. yerine ta.lowest kullanildi)
+//  Repaint korumasi PineCoders'in standart security sarmalayicisi ile saglandi.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+strategy(title = "Institutional Flow Ribbon PRO", shorttitle = "IFR PRO", overlay = true, initial_capital = 10000, default_qty_type = strategy.percent_of_equity, default_qty_value = 10, commission_type = strategy.commission.percent, commission_value = 0.05, slippage = 2, pyramiding = 0, calc_on_every_tick = false, max_bars_back = 500, max_labels_count = 200)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  ① SERIT (MA) AYARLARI
+// ═══════════════════════════════════════════════════════════════════════════════
+G1 = "1. Serit (MA) Ayarlari"
+
+wPrice = input.int(50, "Fiyat Konumu Agirligi (%)", minval = 0, maxval = 100, step = 5, group = G1, tooltip = "Skorun yuzde kaci 'fiyat EMA ustunde mi' bileseninden gelsin. Kalani EMA dizilim bilesenidir.")
+thUp   = input.float(40, "Yesil Esigi (Long)", minval = 0, maxval = 100, step = 5, group = G1)
+thDn   = input.float(-40, "Kirmizi Esigi (Short)", minval = -100, maxval = 0, step = 5, group = G1)
+wMode  = input.string("Hizliya Agirlikli", "Serit Agirlik Modu", options = ["Hizliya Agirlikli", "Esit"], group = G1)
+
+use1 = input.bool(true, "EMA 1", inline = "e1", group = G1)
+len1 = input.int(8, "", inline = "e1", minval = 1, group = G1)
+use2 = input.bool(true, "EMA 2", inline = "e2", group = G1)
+len2 = input.int(13, "", inline = "e2", minval = 1, group = G1)
+use3 = input.bool(true, "EMA 3", inline = "e3", group = G1)
+len3 = input.int(21, "", inline = "e3", minval = 1, group = G1)
+use4 = input.bool(true, "EMA 4", inline = "e4", group = G1)
+len4 = input.int(34, "", inline = "e4", minval = 1, group = G1)
+use5 = input.bool(true, "EMA 5", inline = "e5", group = G1)
+len5 = input.int(55, "", inline = "e5", minval = 1, group = G1)
+use6 = input.bool(true, "EMA 6", inline = "e6", group = G1)
+len6 = input.int(89, "", inline = "e6", minval = 1, group = G1)
+use7 = input.bool(true, "EMA 7", inline = "e7", group = G1)
+len7 = input.int(200, "", inline = "e7", minval = 1, group = G1)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  ② KURUMSAL PARA AKISI
+// ═══════════════════════════════════════════════════════════════════════════════
+G2 = "2. Kurumsal Para Akisi"
+
+minConfirm = input.int(3, "Gereken Minimum Onay", minval = 1, maxval = 5, group = G2)
+useCvd  = input.bool(true, "CVD Yonu", inline = "s1", group = G2)
+cvdLen  = input.int(21, "EMA", inline = "s1", minval = 2, group = G2)
+useObv  = input.bool(true, "OBV Egimi", inline = "s2", group = G2)
+obvLen  = input.int(21, "EMA", inline = "s2", minval = 2, group = G2)
+useRvol = input.bool(true, "Relative Volume", inline = "s3", group = G2)
+rvolLen = input.int(20, "SMA", inline = "s3", minval = 2, group = G2)
+volMult = input.float(1.5, "Hacim Carpani", minval = 0.1, step = 0.1, group = G2)
+useMfi  = input.bool(true, "MFI", inline = "s4", group = G2)
+mfiLen  = input.int(14, "Uzunluk", inline = "s4", minval = 2, group = G2)
+useVwap = input.bool(true, "Session VWAP Konumu", group = G2)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  ③ MULTI-TIMEFRAME
+// ═══════════════════════════════════════════════════════════════════════════════
+G3 = "3. Multi-Timeframe"
+
+useMtf   = input.bool(true, "MTF Onayini Kullan", group = G3)
+htf1     = input.timeframe("60", "HTF 1", group = G3)
+htf2     = input.timeframe("240", "HTF 2", group = G3)
+mtfStrict = input.bool(true, "Siki Mod (her iki HTF ayni renk)", group = G3, tooltip = "Kapali = Gevsek mod: HTF'ler ters renkte olmasin, notr kabul edilir.")
+noRepaint = input.bool(true, "Sadece Kapanmis HTF Bari (repaint kapali)", group = G3, tooltip = "ACIK birakin.")
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  ④ RISK YONETIMI
+// ═══════════════════════════════════════════════════════════════════════════════
+G4 = "4. Risk Yonetimi"
+
+allowLong  = input.bool(true, "Long", inline = "d", group = G4)
+allowShort = input.bool(true, "Short", inline = "d", group = G4)
+flipOnly   = input.bool(true, "Sadece Renk Donus Barinda Gir", group = G4)
+atrLen     = input.int(14, "ATR Uzunlugu", minval = 1, group = G4)
+atrMult    = input.float(1.5, "Stop Loss (ATR x)", minval = 0.1, step = 0.1, group = G4)
+useTp      = input.bool(true, "Take Profit Kullan", group = G4)
+rrRatio    = input.float(2.0, "Risk / Reward", minval = 0.1, step = 0.1, group = G4)
+useTrail   = input.bool(false, "Trailing Stop", group = G4)
+trailAct   = input.float(1.0, "Trailing Aktivasyon (ATR x)", minval = 0.1, step = 0.1, group = G4)
+trailOff   = input.float(0.7, "Trailing Mesafe (ATR x)", minval = 0.1, step = 0.1, group = G4)
+allowRev   = input.bool(true, "Ters Sinyalde Dondur (Reverse)", group = G4)
+exitNeutral = input.bool(false, "Serit Notre Donunce Kapat", group = G4)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  ⑤ SIKISMA (YATAY PIYASA) FILTRESI
+// ═══════════════════════════════════════════════════════════════════════════════
+G5 = "5. Sikisma Filtresi"
+
+useSq    = input.bool(true, "Sikisma Filtresini Kullan", group = G5)
+sqMode   = input.string("Herhangi biri (OR)", "Tespit Yontemi", options = ["ADX", "BBW", "Ikisi de (AND)", "Herhangi biri (OR)"], group = G5)
+adxLen   = input.int(14, "ADX / DI Uzunlugu", minval = 1, group = G5)
+adxSm    = input.int(14, "ADX Yumusatma", minval = 1, group = G5)
+adxTh    = input.float(20, "ADX Esigi (alti = trendsiz)", minval = 5, maxval = 50, step = 1, group = G5)
+bbLen    = input.int(20, "Bollinger Uzunlugu", minval = 2, group = G5)
+bbMult   = input.float(2.0, "Bollinger Carpani", minval = 0.1, step = 0.1, group = G5)
+bbwLook  = input.int(120, "BBW Geriye Bakis", minval = 10, group = G5)
+bbwFact  = input.float(1.2, "BBW Darlik Carpani", minval = 1.0, maxval = 3.0, step = 0.05, group = G5, tooltip = "Bant genisligi, son N barin en darinin bu carpani icindeyse sikisma sayilir.")
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  ⑥ GORSEL
+// ═══════════════════════════════════════════════════════════════════════════════
+G6 = "6. Gorsel"
+
+ribWidth  = input.int(3, "Serit Kalinligi", minval = 1, maxval = 6, group = G6)
+showGlow  = input.bool(true, "Serit Altina Gradient Fill", group = G6)
+glowMult  = input.float(0.35, "Fill Kalinligi (ATR x)", minval = 0.05, maxval = 2.0, step = 0.05, group = G6)
+showBars  = input.bool(false, "Mumlari Serit Rengiyle Boya", group = G6)
+showLbl   = input.bool(true, "LONG / SHORT Etiketleri", group = G6)
+showLvl   = input.bool(true, "Stop ve Hedef Cizgileri", group = G6)
+showSqBg  = input.bool(true, "Sikisma Bolgesi Arka Plani", group = G6)
+showPanel = input.bool(true, "Durum Panelini Goster", group = G6)
+panelLoc  = input.string("Sag Ust", "Panel Konumu", options = ["Sag Ust", "Sag Alt", "Sol Ust", "Sol Alt"], group = G6)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  RENKLER
+// ═══════════════════════════════════════════════════════════════════════════════
+C_BULL = #26A69A
+C_BEAR = #EF5350
+C_FLAT = #787B86
+C_SQ   = #FF9800
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  CEKIRDEK FONKSIYONLAR
+//  Dizi ve dongu KULLANILMADI; her EMA acik acik islenir. Bu, request.security
+//  icinde de birebir ayni sekilde calisir ve derleme riski birakmaz.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Hizalanma skoru: -100 (tam dusus dizilimi) ... +100 (tam yukselis dizilimi)
+f_score() =>
+    float e1 = ta.ema(close, len1)
+    float e2 = ta.ema(close, len2)
+    float e3 = ta.ema(close, len3)
+    float e4 = ta.ema(close, len4)
+    float e5 = ta.ema(close, len5)
+    float e6 = ta.ema(close, len6)
+    float e7 = ta.ema(close, len7)
+
+    float pS = 0.0
+    float pN = 0.0
+    float oS = 0.0
+    float oN = 0.0
+    float pv = na
+
+    if use1
+        pS := pS + (close > e1 ? 1.0 : -1.0)
+        pN := pN + 1.0
+        pv := e1
+    if use2
+        pS := pS + (close > e2 ? 1.0 : -1.0)
+        pN := pN + 1.0
+        if not na(pv)
+            oS := oS + (pv > e2 ? 1.0 : -1.0)
+            oN := oN + 1.0
+        pv := e2
+    if use3
+        pS := pS + (close > e3 ? 1.0 : -1.0)
+        pN := pN + 1.0
+        if not na(pv)
+            oS := oS + (pv > e3 ? 1.0 : -1.0)
+            oN := oN + 1.0
+        pv := e3
+    if use4
+        pS := pS + (close > e4 ? 1.0 : -1.0)
+        pN := pN + 1.0
+        if not na(pv)
+            oS := oS + (pv > e4 ? 1.0 : -1.0)
+            oN := oN + 1.0
+        pv := e4
+    if use5
+        pS := pS + (close > e5 ? 1.0 : -1.0)
+        pN := pN + 1.0
+        if not na(pv)
+            oS := oS + (pv > e5 ? 1.0 : -1.0)
+            oN := oN + 1.0
+        pv := e5
+    if use6
+        pS := pS + (close > e6 ? 1.0 : -1.0)
+        pN := pN + 1.0
+        if not na(pv)
+            oS := oS + (pv > e6 ? 1.0 : -1.0)
+            oN := oN + 1.0
+        pv := e6
+    if use7
+        pS := pS + (close > e7 ? 1.0 : -1.0)
+        pN := pN + 1.0
+        if not na(pv)
+            oS := oS + (pv > e7 ? 1.0 : -1.0)
+            oN := oN + 1.0
+        pv := e7
+
+    float pNorm = pN > 0 ? pS / pN * 100.0 : 0.0
+    float oNorm = oN > 0 ? oS / oN * 100.0 : 0.0
+    float wp = wPrice / 100.0
+    pNorm * wp + oNorm * (1.0 - wp)
+
+// Ekrana cizilen tek cizgi: aktif EMA'larin agirlikli ortalamasi
+f_baseline() =>
+    float e1 = ta.ema(close, len1)
+    float e2 = ta.ema(close, len2)
+    float e3 = ta.ema(close, len3)
+    float e4 = ta.ema(close, len4)
+    float e5 = ta.ema(close, len5)
+    float e6 = ta.ema(close, len6)
+    float e7 = ta.ema(close, len7)
+
+    bool eq = wMode == "Esit"
+    float w1 = eq ? 1.0 : 1.0 / len1
+    float w2 = eq ? 1.0 : 1.0 / len2
+    float w3 = eq ? 1.0 : 1.0 / len3
+    float w4 = eq ? 1.0 : 1.0 / len4
+    float w5 = eq ? 1.0 : 1.0 / len5
+    float w6 = eq ? 1.0 : 1.0 / len6
+    float w7 = eq ? 1.0 : 1.0 / len7
+
+    float vs = 0.0
+    float ws = 0.0
+    if use1
+        vs := vs + e1 * w1
+        ws := ws + w1
+    if use2
+        vs := vs + e2 * w2
+        ws := ws + w2
+    if use3
+        vs := vs + e3 * w3
+        ws := ws + w3
+    if use4
+        vs := vs + e4 * w4
+        ws := ws + w4
+    if use5
+        vs := vs + e5 * w5
+        ws := ws + w5
+    if use6
+        vs := vs + e6 * w6
+        ws := ws + w6
+    if use7
+        vs := vs + e7 * w7
+        ws := ws + w7
+    ws > 0 ? vs / ws : close
+
+// Repaint'siz HTF cagrisi. Pine fonksiyonlari inline ettigi icin _src ifadesi
+// HTF baglaminda hesaplanir; [1] ile KAPANMIS HTF bari alinir.
+f_sec(simple string _res, float _src) =>
+    request.security(syminfo.tickerid, _res, noRepaint ? _src[1] : _src, lookahead = barmerge.lookahead_off)
+
+f_state(float sc) =>
+    sc >= thUp ? 1 : sc <= thDn ? -1 : 0
+
+f_col(int st) =>
+    st == 1 ? C_BULL : st == -1 ? C_BEAR : C_FLAT
+
+f_txt(int st) =>
+    st == 1 ? "YUKSELIS" : st == -1 ? "DUSUS" : "NOTR"
+
+f_json(string act, float px, float sl, float tp, float sc) =>
+    '{"action":"' + act + '","ticker":"' + syminfo.ticker + '","exchange":"' + syminfo.exchange + '","tf":"' + timeframe.period + '","price":' + str.tostring(px, format.mintick) + ',"sl":' + str.tostring(sl, format.mintick) + ',"tp":' + str.tostring(tp, format.mintick) + ',"score":' + str.tostring(sc, "#.##") + '}'
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  MEVCUT TF HESAPLARI
+// ═══════════════════════════════════════════════════════════════════════════════
+float scoreCur = f_score()
+float baseline = f_baseline()
+float atrVal   = ta.atr(atrLen)
+
+// ── Sikisma tespiti ──────────────────────────────────────────────────────────
+[diPlus, diMinus, adxVal] = ta.dmi(adxLen, adxSm)
+bool adxSq = not na(adxVal) and adxVal < adxTh
+
+float bbBasis = ta.sma(close, bbLen)
+float bbDev   = bbMult * ta.stdev(close, bbLen)
+float bbw     = bbBasis > 0 ? bbDev * 2 / bbBasis * 100 : na
+float bbwMin  = ta.lowest(bbw, bbwLook)
+bool  bbwSq   = not na(bbw) and not na(bbwMin) and bbw <= bbwMin * bbwFact
+
+bool sqRaw  = sqMode == "ADX" ? adxSq : sqMode == "BBW" ? bbwSq : sqMode == "Ikisi de (AND)" ? (adxSq and bbwSq) : (adxSq or bbwSq)
+bool squeeze = useSq and sqRaw
+
+// Sikisma varsa skor ne olursa olsun serit GRI kabul edilir -> islem yok.
+// Sikisma cozuldugunde gri -> yesil/kirmizi gecisi dogal bir renk donusu uretir,
+// yani kirilim bari zaten sinyal olarak yakalanir.
+int stCur = squeeze ? 0 : f_state(scoreCur)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  MULTI-TIMEFRAME
+// ═══════════════════════════════════════════════════════════════════════════════
+float scoreH1 = f_sec(htf1, f_score())
+float scoreH2 = f_sec(htf2, f_score())
+int   stH1    = f_state(nz(scoreH1))
+int   stH2    = f_state(nz(scoreH2))
+
+bool mtfLong  = not useMtf or (mtfStrict ? (stH1 == 1 and stH2 == 1) : (stH1 >= 0 and stH2 >= 0))
+bool mtfShort = not useMtf or (mtfStrict ? (stH1 == -1 and stH2 == -1) : (stH1 <= 0 and stH2 <= 0))
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  KURUMSAL PARA AKISI FILTRELERI
+//  ta.obv / ta.vwap / ta.mfi hacimsiz sembollerde scripti hata ile durdurdugu
+//  icin ayni formuller nz(volume) ile elle yazildi.
+// ═══════════════════════════════════════════════════════════════════════════════
+float rng   = high - low
+float upV   = rng > 0 ? nz(volume) * (close - low) / rng : 0.0
+float dnV   = rng > 0 ? nz(volume) * (high - close) / rng : 0.0
+float cvd   = ta.cum(upV - dnV)
+float cvdS  = ta.ema(cvd, cvdLen)
+bool cvdBull = cvd > cvdS
+bool cvdBear = cvd < cvdS
+
+var float obvVal = 0.0
+obvVal := obvVal + (close > nz(close[1], close) ? nz(volume) : close < nz(close[1], close) ? -nz(volume) : 0.0)
+float obvS   = ta.ema(obvVal, obvLen)
+bool obvBull = obvVal > obvS
+bool obvBear = obvVal < obvS
+
+float volAvg = ta.sma(volume, rvolLen)
+bool rvolOk  = nz(volume) > nz(volAvg) * volMult
+
+float mfSrc = hlc3
+float posF  = ta.rma(mfSrc > nz(mfSrc[1], mfSrc) ? mfSrc * nz(volume) : 0.0, mfiLen)
+float negF  = ta.rma(mfSrc < nz(mfSrc[1], mfSrc) ? mfSrc * nz(volume) : 0.0, mfiLen)
+float mfiVal = posF + negF == 0 ? 50.0 : negF == 0 ? 100.0 : 100.0 - 100.0 / (1.0 + posF / negF)
+bool mfiBull = mfiVal > 50
+bool mfiBear = mfiVal < 50
+
+bool newDay = timeframe.change("D")
+var float cumPV = 0.0
+var float cumV  = 0.0
+if newDay
+    cumPV := 0.0
+    cumV  := 0.0
+cumPV := cumPV + hlc3 * nz(volume)
+cumV  := cumV + nz(volume)
+float vwapVal = cumV > 0 ? cumPV / cumV : hlc3
+bool vwapBull = close > vwapVal
+bool vwapBear = close < vwapVal
+
+int activeCnt = (useCvd ? 1 : 0) + (useObv ? 1 : 0) + (useRvol ? 1 : 0) + (useMfi ? 1 : 0) + (useVwap ? 1 : 0)
+int needCnt   = math.min(minConfirm, math.max(activeCnt, 1))
+int smLong    = (useCvd and cvdBull ? 1 : 0) + (useObv and obvBull ? 1 : 0) + (useRvol and rvolOk ? 1 : 0) + (useMfi and mfiBull ? 1 : 0) + (useVwap and vwapBull ? 1 : 0)
+int smShort   = (useCvd and cvdBear ? 1 : 0) + (useObv and obvBear ? 1 : 0) + (useRvol and rvolOk ? 1 : 0) + (useMfi and mfiBear ? 1 : 0) + (useVwap and vwapBear ? 1 : 0)
+bool smLongOk  = activeCnt == 0 or smLong >= needCnt
+bool smShortOk = activeCnt == 0 or smShort >= needCnt
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  SINYALLER (sadece durum degisiminde)
+// ═══════════════════════════════════════════════════════════════════════════════
+bool longReg  = stCur == 1 and mtfLong and smLongOk
+bool shortReg = stCur == -1 and mtfShort and smShortOk
+bool flipUp   = stCur == 1 and nz(stCur[1]) != 1
+bool flipDn   = stCur == -1 and nz(stCur[1]) != -1
+
+bool longSig  = allowLong and (flipOnly ? (flipUp and mtfLong and smLongOk) : (longReg and not longReg[1]))
+bool shortSig = allowShort and (flipOnly ? (flipDn and mtfShort and smShortOk) : (shortReg and not shortReg[1]))
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  EMIRLER
+// ═══════════════════════════════════════════════════════════════════════════════
+float slL = close - atrVal * atrMult
+float tpL = close + atrVal * atrMult * rrRatio
+float slS = close + atrVal * atrMult
+float tpS = close - atrVal * atrMult * rrRatio
+
+var float pendAtr = na
+if longSig or shortSig
+    pendAtr := atrVal
+
+if longSig and (allowRev or strategy.position_size == 0)
+    strategy.entry("LONG", strategy.long, comment = "L", alert_message = f_json("buy", close, slL, tpL, scoreCur))
+
+if shortSig and (allowRev or strategy.position_size == 0)
+    strategy.entry("SHORT", strategy.short, comment = "S", alert_message = f_json("sell", close, slS, tpS, scoreCur))
+
+var float stopPx = na
+var float tpPx   = na
+
+int posSign = strategy.position_size > 0 ? 1 : strategy.position_size < 0 ? -1 : 0
+bool newPos = posSign != 0 and posSign != nz(posSign[1])
+
+if newPos
+    float entryPx = strategy.position_avg_price
+    float a = nz(pendAtr, atrVal)
+    stopPx := posSign > 0 ? entryPx - a * atrMult : entryPx + a * atrMult
+    float risk = math.abs(entryPx - stopPx)
+    tpPx := posSign > 0 ? entryPx + risk * rrRatio : entryPx - risk * rrRatio
+
+if posSign == 0
+    stopPx := na
+    tpPx := na
+
+float tActTicks = atrVal * trailAct / syminfo.mintick
+float tOffTicks = atrVal * trailOff / syminfo.mintick
+
+if strategy.position_size > 0
+    strategy.exit("L-Exit", from_entry = "LONG", stop = stopPx, limit = useTp ? tpPx : na, trail_points = useTrail ? tActTicks : na, trail_offset = useTrail ? tOffTicks : na, alert_message = f_json("close_long", close, nz(stopPx), nz(tpPx), scoreCur))
+
+if strategy.position_size < 0
+    strategy.exit("S-Exit", from_entry = "SHORT", stop = stopPx, limit = useTp ? tpPx : na, trail_points = useTrail ? tActTicks : na, trail_offset = useTrail ? tOffTicks : na, alert_message = f_json("close_short", close, nz(stopPx), nz(tpPx), scoreCur))
+
+if exitNeutral and strategy.position_size > 0 and stCur != 1
+    strategy.close("LONG", comment = "Renk Kaybi", alert_message = f_json("close_long", close, nz(stopPx), nz(tpPx), scoreCur))
+
+if exitNeutral and strategy.position_size < 0 and stCur != -1
+    strategy.close("SHORT", comment = "Renk Kaybi", alert_message = f_json("close_short", close, nz(stopPx), nz(tpPx), scoreCur))
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  GORSELLESTIRME
+// ═══════════════════════════════════════════════════════════════════════════════
+color ribCol = f_col(stCur)
+
+plotBase = plot(baseline, "Kurumsal Serit", color = ribCol, linewidth = ribWidth)
+plotG1 = plot(showGlow ? baseline - atrVal * glowMult * 0.4 : na, "Fill 1", color = color.new(ribCol, 100), editable = false)
+plotG2 = plot(showGlow ? baseline - atrVal * glowMult : na, "Fill 2", color = color.new(ribCol, 100), editable = false)
+fill(plotBase, plotG1, color = color.new(ribCol, 80), title = "Golge 1")
+fill(plotG1, plotG2, color = color.new(ribCol, 90), title = "Golge 2")
+
+plot(showLvl and strategy.position_size != 0 ? stopPx : na, "Stop", color = color.new(C_BEAR, 20), style = plot.style_linebr, linewidth = 1)
+plot(showLvl and strategy.position_size != 0 and useTp ? tpPx : na, "Hedef", color = color.new(C_BULL, 20), style = plot.style_linebr, linewidth = 1)
+
+barcolor(showBars ? ribCol : na, title = "Mum Rengi")
+bgcolor(squeeze and showSqBg ? color.new(C_SQ, 92) : na, title = "Sikisma Bolgesi")
+
+plotshape(showLbl and longSig, title = "LONG", style = shape.labelup, location = location.belowbar, color = C_BULL, textcolor = color.white, text = "LONG", size = size.small)
+plotshape(showLbl and shortSig, title = "SHORT", style = shape.labeldown, location = location.abovebar, color = C_BEAR, textcolor = color.white, text = "SHORT", size = size.small)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  DURUM PANELI
+// ═══════════════════════════════════════════════════════════════════════════════
+var table pnl = table.new(panelLoc == "Sag Ust" ? position.top_right : panelLoc == "Sag Alt" ? position.bottom_right : panelLoc == "Sol Ust" ? position.top_left : position.bottom_left, 2, 10, border_width = 1, frame_color = color.new(color.gray, 50), frame_width = 1)
+
+if showPanel and barstate.islast
+    table.cell(pnl, 0, 0, "IFR PRO", bgcolor = color.new(color.black, 15), text_color = color.white, text_size = size.small)
+    table.cell(pnl, 1, 0, timeframe.period, bgcolor = color.new(color.black, 15), text_color = color.white, text_size = size.small)
+    table.cell(pnl, 0, 1, "Serit", bgcolor = color.new(color.gray, 85), text_color = color.white, text_size = size.small)
+    table.cell(pnl, 1, 1, f_txt(stCur), bgcolor = f_col(stCur), text_color = color.white, text_size = size.small)
+    table.cell(pnl, 0, 2, "HTF1 " + htf1, bgcolor = color.new(color.gray, 85), text_color = color.white, text_size = size.small)
+    table.cell(pnl, 1, 2, useMtf ? f_txt(stH1) : "KAPALI", bgcolor = useMtf ? f_col(stH1) : color.new(C_FLAT, 40), text_color = color.white, text_size = size.small)
+    table.cell(pnl, 0, 3, "HTF2 " + htf2, bgcolor = color.new(color.gray, 85), text_color = color.white, text_size = size.small)
+    table.cell(pnl, 1, 3, useMtf ? f_txt(stH2) : "KAPALI", bgcolor = useMtf ? f_col(stH2) : color.new(C_FLAT, 40), text_color = color.white, text_size = size.small)
+    table.cell(pnl, 0, 4, "Skor", bgcolor = color.new(color.gray, 85), text_color = color.white, text_size = size.small)
+    table.cell(pnl, 1, 4, str.tostring(scoreCur, "#.#"), bgcolor = color.new(f_col(stCur), 55), text_color = color.white, text_size = size.small)
+    table.cell(pnl, 0, 5, "Akis L/S", bgcolor = color.new(color.gray, 85), text_color = color.white, text_size = size.small)
+    table.cell(pnl, 1, 5, str.tostring(smLong) + " / " + str.tostring(smShort) + "  (min " + str.tostring(needCnt) + ")", bgcolor = color.new(smLong >= needCnt ? C_BULL : smShort >= needCnt ? C_BEAR : C_FLAT, 45), text_color = color.white, text_size = size.small)
+    table.cell(pnl, 0, 6, "Sikisma", bgcolor = color.new(color.gray, 85), text_color = color.white, text_size = size.small)
+    table.cell(pnl, 1, 6, not useSq ? "KAPALI" : squeeze ? "VAR" : "YOK", bgcolor = color.new(squeeze ? C_SQ : C_FLAT, 45), text_color = color.white, text_size = size.small)
+    table.cell(pnl, 0, 7, "ADX / DI", bgcolor = color.new(color.gray, 85), text_color = color.white, text_size = size.small)
+    table.cell(pnl, 1, 7, str.tostring(adxVal, "#.#") + "  " + (diPlus > diMinus ? "+DI" : "-DI"), bgcolor = color.new(diPlus > diMinus ? C_BULL : C_BEAR, 55), text_color = color.white, text_size = size.small)
+    table.cell(pnl, 0, 8, "Pozisyon", bgcolor = color.new(color.gray, 85), text_color = color.white, text_size = size.small)
+    table.cell(pnl, 1, 8, posSign > 0 ? "LONG" : posSign < 0 ? "SHORT" : "YOK", bgcolor = color.new(f_col(posSign), 45), text_color = color.white, text_size = size.small)
+    table.cell(pnl, 0, 9, "Acik K/Z", bgcolor = color.new(color.gray, 85), text_color = color.white, text_size = size.small)
+    table.cell(pnl, 1, 9, posSign == 0 ? "-" : str.tostring(strategy.openprofit, "#.##"), bgcolor = color.new(strategy.openprofit >= 0 ? C_BULL : C_BEAR, 55), text_color = color.white, text_size = size.small)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  ALARMLAR
+//  alertcondition() strateji scriptinde DERLENIR ama olusturdugu kosul
+//  "Alarm Olustur" penceresinde listelenmez, yani secilemez. Bu yuzden islevsel
+//  alarmlar alert() ve emirlerdeki alert_message ile verilir.
+//  Alarm Olustur -> Kosul: bu strateji -> "Any alert() function call"
+// ═══════════════════════════════════════════════════════════════════════════════
+if longSig
+    alert(f_json("buy", close, slL, tpL, scoreCur), alert.freq_once_per_bar_close)
+
+if shortSig
+    alert(f_json("sell", close, slS, tpS, scoreCur), alert.freq_once_per_bar_close)
