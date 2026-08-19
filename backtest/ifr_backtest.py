@@ -217,7 +217,7 @@ def htf_components(df: pd.DataFrame, rule: str):
 # ═══════════════════════════════════════════════════════════════════════════
 #  SIMULASYON
 # ═══════════════════════════════════════════════════════════════════════════
-def simulate(op, hi, lo, cl, atrv, long_sig, short_sig,
+def simulate(op, hi, lo, cl, atrv, long_sig, short_sig, stop_arr, tp_arr,
              atr_mult, rr, use_tp, allow_rev,
              capital=10000.0, qty_pct=0.10, comm=0.0005, slip_bps=1.0):
     """Emirler bir SONRAKI barin acilisinda dolar (Pine varsayilani).
@@ -243,12 +243,18 @@ def simulate(op, hi, lo, cl, atrv, long_sig, short_sig,
             a = atrv[i - 1]
             if np.isfinite(a) and a > 0 and eq > 0:
                 entry = op[i] * (1 + sl_f) if want > 0 else op[i] * (1 - sl_f)
-                qty = eq * qty_pct / entry
-                eq -= abs(entry * qty) * comm
-                stop = entry - a * atr_mult if want > 0 else entry + a * atr_mult
-                risk = abs(entry - stop)
-                tp = entry + risk * rr if want > 0 else entry - risk * rr
-                pos = want
+                s0, t0 = stop_arr[i - 1], tp_arr[i - 1]
+                if np.isfinite(s0):
+                    stop, tp = s0, t0          # RANGE / BREAKOUT: seviye bazli
+                else:
+                    stop = entry - a * atr_mult if want > 0 else entry + a * atr_mult
+                    risk = abs(entry - stop)
+                    tp = entry + risk * rr if want > 0 else entry - risk * rr
+                # Acilis stopun otesine gecmisse islem gecersiz
+                if (want > 0 and stop < entry) or (want < 0 and stop > entry):
+                    qty = eq * qty_pct / entry
+                    eq -= abs(entry * qty) * comm
+                    pos = want
 
         # ── 2) Cikis: stop / hedef ayni bar icinde kontrol edilir ─────────
         if pos != 0:
@@ -298,46 +304,82 @@ def metrics(curve, trades, bars_per_year):
 # ═══════════════════════════════════════════════════════════════════════════
 #  SINYAL URETIMI
 # ═══════════════════════════════════════════════════════════════════════════
-def build_signals(pre, p):
-    """Onceden hesaplanmis serilerden bir parametre kombinasyonunun sinyalleri."""
-    sc = pre["pNorm"] * (p["w"] / 100) + pre["oNorm"] * (1 - p["w"] / 100)
+def _prev(a):
+    return np.concatenate([[a[0] * 0], a[:-1]])
+
+
+def _since(mask):
+    """Pine'daki ta.barssince() karsiligi."""
+    idx = np.arange(len(mask))
+    last = np.maximum.accumulate(np.where(mask, idx, -1))
+    return np.where(last < 0, 9999, idx - last)
+
+
+def playbooks(pre, p):
+    """Uc oyun kitabinin sinyalleri ve her modun kendi stop/hedef seviyesi.
+    Pine'daki IFR Trader Pro mantiginin birebir karsiligi."""
+    c, h, l, o = pre["c"], pre["h"], pre["l"], pre["o"]
+    atrv, adxv = pre["atrv"], pre["adx"]
+    bt, bb = pre["box_top"], pre["box_bot"]
+    n = len(c)
+
+    wf = p["w"] / 100.0
+    sc = pre["pNorm"] * wf + pre["oNorm"] * (1 - wf)
     st = np.where(sc >= p["th"], 1, np.where(sc <= -p["th"], -1, 0))
 
-    if p["sq"] != "off":
-        a, b = pre["adx_sq"], pre["bbw_sq"]
-        sq = {"adx": a, "bbw": b, "and": a & b, "or": a | b}[p["sq"]]
-        st = np.where(sq, 0, st)
+    boxH = bt - bb
+    boxOk = np.isfinite(bt) & np.isfinite(bb) & (boxH > 0)
+    inBox = boxOk & (c <= bt) & (c >= bb)
+    squeeze = np.isfinite(adxv) & (adxv < p["adxTh"])
+    rangeReg = boxOk & squeeze & inBox
+    trendReg = ~rangeReg
 
-    if p["mtf"] == "off":
-        ml = ms = np.ones(len(st), bool)
-    else:
-        wf = p["w"] / 100
-        s1 = pre["h1p"] * wf + pre["h1o"] * (1 - wf)
-        s2 = pre["h2p"] * wf + pre["h2o"] * (1 - wf)
-        h1 = np.where(s1 >= p["th"], 1, np.where(s1 <= -p["th"], -1, 0))
-        h2 = np.where(s2 >= p["th"], 1, np.where(s2 <= -p["th"], -1, 0))
-        if p["mtf"] == "strict":
-            ml, ms = (h1 == 1) & (h2 == 1), (h1 == -1) & (h2 == -1)
-        else:
-            ml, ms = (h1 >= 0) & (h2 >= 0), (h1 <= 0) & (h2 <= 0)
+    use_r = p["mode"] in ("auto", "range")
+    use_b = p["mode"] in ("auto", "breakout")
+    use_t = p["mode"] in ("auto", "trend")
 
-    fl = pre["mf_long"] >= p["conf"]
-    fs = pre["mf_short"] >= p["conf"]
-    prev = np.roll(st, 1); prev[0] = 0
+    # 1) RANGE — kenar fade
+    edge = boxH * p["edge"] / 100.0
+    rgL = use_r & rangeReg & (l <= bb + edge) & (c > bb + edge * 0.5) & (c > o)
+    rgS = use_r & rangeReg & (h >= bt - edge) & (c < bt - edge * 0.5) & (c < o)
 
-    if p["flip"]:
-        L = (st == 1) & (prev != 1) & ml & fl
-        S = (st == -1) & (prev != -1) & ms & fs
-    else:
-        lr, sr = (st == 1) & ml & fl, (st == -1) & ms & fs
-        L = lr & ~np.roll(lr, 1); S = sr & ~np.roll(sr, 1)
-        L[0] = S[0] = False
-    return L, S
+    # 2) BREAKOUT — kutu disina kapanis + hacim
+    buR = boxOk & (c > bt) & pre["vol_ok"]
+    bdR = boxOk & (c < bb) & pre["vol_ok"]
+    boL = use_b & buR & ~_prev(buR).astype(bool)
+    boS = use_b & bdR & ~_prev(bdR).astype(bool)
+
+    # 3) TREND — serit + kalite puani
+    prevst = np.concatenate([[0], st[:-1]])
+    fU = _since((st == 1) & (prevst != 1))
+    fD = _since((st == -1) & (prevst != -1))
+    s1 = pre["h1p"] * wf + pre["h1o"] * (1 - wf)
+    s2 = pre["h2p"] * wf + pre["h2o"] * (1 - wf)
+    qL = (s1 >= p["th"]).astype(int) + (s2 >= p["th"]).astype(int) + pre["mf_long"]
+    qS = (s1 <= -p["th"]).astype(int) + (s2 <= -p["th"]).astype(int) + pre["mf_short"]
+    trL = use_t & trendReg & ~squeeze & (st == 1) & (fU <= p["flipw"]) & (qL >= p["qmin"])
+    trS = use_t & trendReg & ~squeeze & (st == -1) & (fD <= p["flipw"]) & (qS >= p["qmin"])
+
+    L, S = rgL | boL | trL, rgS | boS | trS
+
+    stop = np.full(n, np.nan)
+    tp = np.full(n, np.nan)
+    for m, sv, tv in (
+        (trL, c - atrv * p["atr"], c + atrv * p["atr"] * p["rr"]),
+        (trS, c + atrv * p["atr"], c - atrv * p["atr"] * p["rr"]),
+        (rgL, bb - atrv * p["pad"], bt),
+        (rgS, bt + atrv * p["pad"], bb),
+        (boL, bt - atrv * p["pad"], c + boxH),
+        (boS, bb + atrv * p["pad"], c - boxH),
+    ):
+        stop = np.where(m, sv, stop)
+        tp = np.where(m, tv, tp)
+    return L, S, stop, tp
 
 
 def run(pre, p, sl):
-    L, S = build_signals(pre, p)
-    curve, tr = simulate(sl["o"], sl["h"], sl["l"], sl["c"], sl["atr"], L, S,
+    L, S, stop, tp = playbooks(pre, p)
+    curve, tr = simulate(sl["o"], sl["h"], sl["l"], sl["c"], sl["atr"], L, S, stop, tp,
                          p["atr"], p["rr"], True, p["rev"])
     return metrics(curve, tr, sl["bpy"]), curve
 
@@ -353,31 +395,33 @@ def apply_to_pine(params: dict, path: str) -> None:
     yazar. Sadece varsayilan degeri degistirir; etiket, tooltip, grup korunur."""
     src = Path(path).read_text(encoding="utf-8")
 
-    sq_map = {"adx": "ADX", "bbw": "BBW", "and": "Ikisi de (AND)",
-              "or": "Herhangi biri (OR)"}
+    # Bosluk sayisina bagimli olmayan esleme (\s* ile toleransli)
+    def pat(name, kind):
+        return r"(" + name + r"\s*=\s*input\." + kind + r"\()\s*" + \
+               (r"(?:true|false)" if kind == "bool" else r"[-\d.]+")
+
     edits = [
-        (r'(wPrice = input\.int\()\s*[-\d.]+', str(int(params["w"]))),
-        (r'(thUp   = input\.float\()\s*[-\d.]+', str(float(params["th"]))),
-        (r'(thDn   = input\.float\()\s*[-\d.]+', str(-float(params["th"]))),
-        (r'(minConfirm = input\.int\()\s*[-\d.]+', str(int(params["conf"]))),
-        (r'(atrMult    = input\.float\()\s*[-\d.]+', str(float(params["atr"]))),
-        (r'(rrRatio    = input\.float\()\s*[-\d.]+', str(float(params["rr"]))),
-        (r'(flipOnly   = input\.bool\()\s*(?:true|false)', str(bool(params["flip"])).lower()),
-        (r'(allowRev   = input\.bool\()\s*(?:true|false)', str(bool(params["rev"])).lower()),
-        (r'(useSq    = input\.bool\()\s*(?:true|false)', str(params["sq"] != "off").lower()),
-        (r'(useMtf   = input\.bool\()\s*(?:true|false)', str(params["mtf"] != "off").lower()),
-        (r'(mtfStrict = input\.bool\()\s*(?:true|false)', str(params["mtf"] == "strict").lower()),
+        (pat("wPrice", "int"), str(int(params["w"]))),
+        (pat("thUp", "float"), str(float(params["th"]))),
+        (pat("thDn", "float"), str(-float(params["th"]))),
+        (pat("qualityMin", "int"), str(int(params["qmin"]))),
+        (pat("flipWindow", "int"), str(int(params["flipw"]))),
+        (pat("adxTh", "float"), str(float(params["adxTh"]))),
+        (pat("edgePct", "float"), str(float(params["edge"]))),
+        (pat("atrMult", "float"), str(float(params["atr"]))),
+        (pat("rrRatio", "float"), str(float(params["rr"]))),
+        (pat("stopPad", "float"), str(float(params["pad"]))),
+        (pat("allowRev", "bool"), str(bool(params["rev"])).lower()),
+        (pat("useRange", "bool"), str(params["mode"] in ("auto", "range")).lower()),
+        (pat("useBreak", "bool"), str(params["mode"] in ("auto", "breakout")).lower()),
+        (pat("useTrend", "bool"), str(params["mode"] in ("auto", "trend")).lower()),
     ]
+    # NOT: dongu degiskenini 'pat' yapmayin, yukaridaki pat() yardimcisini golgeler
     miss = []
-    for pat, val in edits:
-        src, k = re.subn(pat, lambda m, v=val: m.group(1) + v, src, count=1)
+    for rx, val in edits:
+        src, k = re.subn(rx, lambda m, v=val: m.group(1) + v, src, count=1)
         if k == 0:
-            miss.append(pat)
-    if params["sq"] in sq_map:
-        src, k = re.subn(r'(sqMode   = input\.string\(")[^"]*"',
-                         lambda m: m.group(1) + sq_map[params["sq"]] + '"', src, count=1)
-        if k == 0:
-            miss.append("sqMode")
+            miss.append(rx)
 
     Path(path).write_text(src, encoding="utf-8")
     print(f"  {path} guncellendi.")
@@ -397,6 +441,10 @@ def main():
     ap.add_argument("--htf1", choices=list(HTF_RULE), help="varsayilan: taban dilimin bir ustu")
     ap.add_argument("--htf2", choices=list(HTF_RULE), help="varsayilan: taban dilimin iki ustu")
     ap.add_argument("--folds", type=int, default=4, help="walk-forward dilim sayisi")
+    ap.add_argument("--box-look", type=int, default=120, help="kutu geriye bakis (bar)")
+    ap.add_argument("--adx-len", type=int, default=14)
+    ap.add_argument("--adx-sm", type=int, default=14)
+    ap.add_argument("--vol-mult", type=float, default=1.5)
     ap.add_argument("--quick", action="store_true", help="kucuk grid")
     ap.add_argument("--top", type=int, default=12)
     ap.add_argument("--out", default="ifr_sonuc.json")
@@ -419,10 +467,21 @@ def main():
     mfl, mfs = money_flow(df)
     d1, d2 = HTF_LADDER[a.interval]
     nxt, nx2 = (a.htf1 or d1), (a.htf2 or d2)
+    _, _, adxv = adx_wilder(df, a.adx_len, a.adx_sm)
+    atr_s = atr(df)
+    # Kutu siniri bir bar geriden: "kapanis kutu disinda" sarti kendini bozmasin
+    box_top = df["high"].rolling(a.box_look).max().shift(1)
+    box_bot = df["low"].rolling(a.box_look).min().shift(1)
+    vol_ok = (df["volume"] > df["volume"].rolling(20, min_periods=1).mean() * a.vol_mult)
     pre_full = {
         "pNorm": pNorm.values, "oNorm": oNorm.values,
         "adx_sq": adx_sq, "bbw_sq": bbw_sq,
         "mf_long": mfl, "mf_short": mfs,
+        "o": df["open"].values, "h": df["high"].values,
+        "l": df["low"].values, "c": df["close"].values,
+        "atrv": atr_s.values, "adx": adxv.values,
+        "box_top": box_top.values, "box_bot": box_bot.values,
+        "vol_ok": vol_ok.values,
     }
     pre_full["h1p"], pre_full["h1o"] = htf_components(df, HTF_RULE[nxt])
     pre_full["h2p"], pre_full["h2o"] = htf_components(df, HTF_RULE[nx2])
@@ -432,15 +491,16 @@ def main():
     print(f"  HTF1={nxt}  HTF2={nx2}")
 
     if a.quick:
-        grid = dict(w=[50], th=[35, 45], conf=[2, 3], atr=[1.5, 2.0], rr=[1.5, 2.5],
-                    flip=[True], rev=[True], sq=["or", "off"], mtf=["strict", "loose"])
+        grid = dict(mode=["auto", "trend", "range", "breakout"], w=[50], th=[40],
+                    qmin=[2, 3], flipw=[3], atr=[1.5], rr=[2.0], adxTh=[20],
+                    edge=[15], pad=[0.5], rev=[True])
     else:
         # Grid bilerek dar tutuldu: her ek parametre coklu-karsilastirma
         # yaniltmasini buyutur, yani sansa iyi gorunen ayar bulma riskini.
-        grid = dict(w=[40, 50, 60], th=[30, 40, 50, 60], conf=[1, 2, 3, 4],
-                    atr=[1.0, 1.5, 2.0, 2.5], rr=[1.5, 2.0, 2.5, 3.0],
-                    flip=[True, False], rev=[True],
-                    sq=["off", "adx", "or"], mtf=["off", "strict", "loose"])
+        grid = dict(mode=["auto", "trend", "range", "breakout"],
+                    w=[50], th=[30, 40, 50], qmin=[2, 3, 4], flipw=[1, 3, 5],
+                    atr=[1.5, 2.0], rr=[1.5, 2.0, 3.0], adxTh=[20, 25],
+                    edge=[15], pad=[0.5], rev=[True])
     keys = list(grid)
     combos = [dict(zip(keys, v)) for v in __import__("itertools").product(*grid.values())]
     print(f"── TARAMA ── {len(combos)} kombinasyon")
@@ -502,12 +562,12 @@ def main():
         print("  tum gecmiste:", m_all)
 
     print(f"\n── EN IYI {a.top} (tum gecmis, getiriye gore) ──")
-    hdr = f"{'th':>4}{'conf':>5}{'atr':>5}{'rr':>5}{'sq':>5}{'mtf':>7}{'flip':>6}" \
+    hdr = f"{'mod':>10}{'th':>5}{'qmin':>6}{'flipw':>7}{'atr':>5}{'rr':>5}{'adx':>5}" \
           f"{'getiri%':>10}{'dd%':>8}{'PF':>6}{'islem':>7}"
     print(hdr); print("-" * len(hdr))
     for p, m in sorted(ok or full, key=lambda x: -x[1]["return_pct"])[:a.top]:
-        print(f"{p['th']:>4}{p['conf']:>5}{p['atr']:>5}{p['rr']:>5}{p['sq']:>5}"
-              f"{p['mtf']:>7}{str(p['flip']):>6}{m['return_pct']:>10.1f}"
+        print(f"{p['mode']:>10}{p['th']:>5}{p['qmin']:>6}{p['flipw']:>7}{p['atr']:>5}"
+              f"{p['rr']:>5}{p['adxTh']:>5}{m['return_pct']:>10.1f}"
               f"{m['max_dd_pct']:>8.1f}{m['profit_factor']:>6.2f}{m['trades']:>7}")
 
     # Referans: al-tut

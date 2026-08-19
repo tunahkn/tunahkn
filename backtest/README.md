@@ -1,6 +1,6 @@
-# IFR PRO — Backtest ve Optimizasyon
+# IFR Trader Pro — Backtest ve Optimizasyon
 
-`ifr_master_pro.pine` stratejisinin birebir Python karşılığı. BTC/USD verisini
+`ifr_master_pro.pine` stratejisinin birebir Python karşılığı. Üç oyun kitabını da (RANGE / BREAKOUT / TREND) destekler; grid'deki `mode` parametresi hangisinin açık olduğunu belirler (`auto` = üçü birden). BTC/USD verisini
 indirir, parametre taraması yapar, sonucu **walk-forward** doğrulamadan geçirir
 ve kazanan ayarları doğrudan `.pine` dosyasına yazar.
 

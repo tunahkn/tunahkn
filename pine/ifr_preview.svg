@@ -7,9 +7,9 @@
 <line x1="8" y1="377.4" x2="1144" y2="377.4" stroke="#1E222D" stroke-width="1"/>
 <line x1="8" y1="460.3" x2="1144" y2="460.3" stroke="#1E222D" stroke-width="1"/>
 <line x1="8" y1="543.1" x2="1144" y2="543.1" stroke="#1E222D" stroke-width="1"/>
-<rect x="259.2" y="46" width="114.7" height="580" fill="#FF9800" opacity="0.075"/>
-<text x="316.6" y="64" fill="#FF9800" font-size="11" font-family="system-ui,sans-serif" text-anchor="middle" opacity=".9" font-weight="600">SIKISMA - islem yok</text>
-<rect x="379.4" y="46" width="21.8" height="580" fill="#FF9800" opacity="0.075"/>
+<rect x="543.2" y="46" width="98.3" height="580" fill="#FF9800" opacity="0.075"/>
+<text x="592.4" y="64" fill="#FF9800" font-size="11" font-family="system-ui,sans-serif" text-anchor="middle" opacity=".9" font-weight="600">RANGE - kenarlarda fade</text>
+<rect x="898.2" y="46" width="54.6" height="580" fill="#FF9800" opacity="0.075"/>
 <line x1="10.7" y1="480.7" x2="10.7" y2="495.6" stroke="#26A69A" stroke-width="1" opacity=".55"/>
 <rect x="9.1" y="483.8" width="3.3" height="2.7" fill="#26A69A" opacity=".55"/>
 <line x1="16.2" y1="466.8" x2="16.2" y2="492.5" stroke="#26A69A" stroke-width="1" opacity=".55"/>
@@ -426,16 +426,10 @@
 <rect x="1134.2" y="210.3" width="3.3" height="1.5" fill="#EF5350" opacity=".55"/>
 <line x1="1141.3" y1="208.4" x2="1141.3" y2="249.2" stroke="#EF5350" stroke-width="1" opacity=".55"/>
 <rect x="1139.6" y="211.8" width="3.3" height="27.7" fill="#EF5350" opacity=".55"/>
-<polygon points="10.7,542.8 16.2,536.0 21.7,528.5 27.1,519.4 32.6,508.2 38.0,497.2 43.5,490.8 49.0,482.5 54.4,477.5 59.9,472.4 65.3,470.1 70.8,466.8 76.3,464.5 81.7,460.7 87.2,449.1 92.7,438.3 98.1,426.3 103.6,418.0 109.0,410.4 114.5,401.4 120.0,392.8 125.4,383.6 130.9,374.4 136.3,367.7 141.8,359.5 147.3,353.2 152.7,342.6 158.2,333.5 163.7,323.2 169.1,313.4 174.6,301.8 180.0,292.2 185.5,280.7 191.0,270.1 196.4,257.2 201.9,243.8 207.3,232.4 212.8,223.7 218.3,215.1 223.7,207.3 229.2,198.9 234.7,192.9 240.1,187.4 245.6,182.4 251.0,178.2 256.5,174.7 262.0,171.8 262.0,178.1 256.5,181.4 251.0,184.6 245.6,189.2 240.1,194.9 234.7,200.9 229.2,206.7 223.7,215.0 218.3,223.7 212.8,232.6 207.3,241.9 201.9,254.2 196.4,267.2 191.0,278.9 185.5,289.9 180.0,300.8 174.6,311.0 169.1,321.9 163.7,332.1 158.2,342.5 152.7,352.3 147.3,361.6 141.8,368.2 136.3,376.5 130.9,383.1 125.4,392.8 120.0,402.6 114.5,412.2 109.0,421.0 103.6,429.3 98.1,438.2 92.7,449.7 87.2,460.9 81.7,470.0 76.3,473.5 70.8,476.0 65.3,479.4 59.9,482.0 54.4,487.7 49.0,492.4 43.5,500.4 38.0,506.0 32.6,517.1 27.1,527.4 21.7,536.4 16.2,543.5 10.7,550.0" fill="#26A69A" opacity="0.16"/>
-<polyline points="10.7,542.8 16.2,536.0 21.7,528.5 27.1,519.4 32.6,508.2 38.0,497.2 43.5,490.8 49.0,482.5 54.4,477.5 59.9,472.4 65.3,470.1 70.8,466.8 76.3,464.5 81.7,460.7 87.2,449.1 92.7,438.3 98.1,426.3 103.6,418.0 109.0,410.4 114.5,401.4 120.0,392.8 125.4,383.6 130.9,374.4 136.3,367.7 141.8,359.5 147.3,353.2 152.7,342.6 158.2,333.5 163.7,323.2 169.1,313.4 174.6,301.8 180.0,292.2 185.5,280.7 191.0,270.1 196.4,257.2 201.9,243.8 207.3,232.4 212.8,223.7 218.3,215.1 223.7,207.3 229.2,198.9 234.7,192.9 240.1,187.4 245.6,182.4 251.0,178.2 256.5,174.7 262.0,171.8" fill="none" stroke="#26A69A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#gl)"/>
-<polygon points="262.0,171.8 267.4,170.2 272.9,169.8 278.3,169.5 283.8,168.0 289.3,164.8 294.7,161.3 300.2,157.7 305.7,154.5 311.1,151.8 316.6,150.0 322.0,148.1 327.5,145.1 333.0,143.9 338.4,144.3 343.9,142.5 349.3,141.4 354.8,140.0 360.3,138.5 365.7,139.4 371.2,137.4 376.7,134.6 376.7,141.4 371.2,144.4 365.7,145.7 360.3,144.6 354.8,146.1 349.3,147.6 343.9,148.6 338.4,150.3 333.0,149.7 327.5,150.6 322.0,153.7 316.6,155.7 311.1,157.2 305.7,159.9 300.2,163.4 294.7,167.3 289.3,171.3 283.8,174.5 278.3,175.9 272.9,176.7 267.4,176.5 262.0,178.1" fill="#787B86" opacity="0.16"/>
-<polyline points="262.0,171.8 267.4,170.2 272.9,169.8 278.3,169.5 283.8,168.0 289.3,164.8 294.7,161.3 300.2,157.7 305.7,154.5 311.1,151.8 316.6,150.0 322.0,148.1 327.5,145.1 333.0,143.9 338.4,144.3 343.9,142.5 349.3,141.4 354.8,140.0 360.3,138.5 365.7,139.4 371.2,137.4 376.7,134.6" fill="none" stroke="#787B86" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#gl)"/>
-<polygon points="376.7,134.6 382.1,133.2 382.1,140.6 376.7,141.4" fill="#26A69A" opacity="0.16"/>
-<polyline points="376.7,134.6 382.1,133.2" fill="none" stroke="#26A69A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#gl)"/>
-<polygon points="382.1,133.2 387.6,132.2 393.0,132.0 398.5,133.5 404.0,135.0 404.0,141.9 398.5,141.1 393.0,139.4 387.6,140.1 382.1,140.6" fill="#787B86" opacity="0.16"/>
-<polyline points="382.1,133.2 387.6,132.2 393.0,132.0 398.5,133.5 404.0,135.0" fill="none" stroke="#787B86" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#gl)"/>
-<polygon points="404.0,135.0 409.4,135.8 414.9,135.4 420.3,134.7 425.8,134.6 431.3,133.3 436.7,133.8 442.2,133.6 447.7,132.6 453.1,132.7 458.6,135.3 458.6,141.5 453.1,138.8 447.7,139.0 442.2,140.1 436.7,140.3 431.3,139.9 425.8,140.5 420.3,141.0 414.9,141.7 409.4,142.5 404.0,141.9" fill="#26A69A" opacity="0.16"/>
-<polyline points="404.0,135.0 409.4,135.8 414.9,135.4 420.3,134.7 425.8,134.6 431.3,133.3 436.7,133.8 442.2,133.6 447.7,132.6 453.1,132.7 458.6,135.3" fill="none" stroke="#26A69A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#gl)"/>
+<polyline points="546.0,94.3 551.4,94.3 556.9,94.3 562.3,94.3 567.8,94.3 573.3,94.3 578.7,94.3 584.2,94.3 589.7,94.3 595.1,94.3 600.6,94.3 606.0,94.3 611.5,94.3 617.0,94.3 622.4,94.3 627.9,94.3 633.3,94.3 638.8,94.3 644.3,94.3 649.7,94.3 655.2,94.3 660.7,94.3 666.1,94.3 671.6,94.3 677.0,94.3 682.5,94.3 688.0,94.3 693.4,94.3 698.9,94.3 704.3,94.3 709.8,94.3 715.3,94.3 720.7,94.3 726.2,94.3 731.7,94.3 737.1,94.3 742.6,94.3 748.0,94.3 753.5,94.3 759.0,94.3 764.4,94.3 769.9,94.3 775.3,94.3 780.8,94.3 786.3,94.3 791.7,94.3 797.2,94.3 802.7,94.3 808.1,94.3 813.6,94.3 819.0,94.3 824.5,94.3 830.0,94.3 835.4,94.3 840.9,94.3 846.3,94.3 851.8,94.3 857.3,94.3 862.7,94.3 868.2,94.3 873.7,94.3 879.1,94.3 884.6,94.3 890.0,94.3 895.5,94.3 901.0,94.3 906.4,94.3 911.9,94.3 917.3,94.3 922.8,94.3 928.3,94.3 933.7,94.3 939.2,94.3 944.7,94.3 950.1,94.3 955.6,94.3 961.0,94.3 966.5,94.3 972.0,94.3 977.4,94.3 982.9,94.3 988.3,94.3 993.8,94.3 999.3,94.3 1004.7,94.3 1010.2,94.3 1015.7,94.3 1021.1,94.3 1026.6,94.3 1032.0,94.3 1037.5,94.3 1043.0,103.1 1048.4,103.3 1053.9,103.3 1059.3,103.3 1064.8,103.3 1070.3,103.3 1075.7,103.3 1081.2,103.3 1086.7,103.3 1092.1,103.3 1097.6,103.3 1103.0,103.3 1108.5,107.9 1114.0,107.9 1119.4,107.9 1124.9,107.9 1130.3,107.9 1135.8,107.9 1141.3,114.0" fill="none" stroke="#5D9CEC" stroke-width="1.4" opacity=".75" stroke-dasharray="5 4"/>
+<polyline points="546.0,694.3 551.4,691.5 556.9,683.9 562.3,678.9 567.8,678.9 573.3,666.0 578.7,659.0 584.2,653.5 589.7,653.5 595.1,653.5 600.6,641.0 606.0,622.4 611.5,612.0 617.0,577.8 622.4,561.7 627.9,561.7 633.3,561.7 638.8,510.8 644.3,510.8 649.7,510.8 655.2,510.8 660.7,503.8 666.1,495.6 671.6,492.5 677.0,485.5 682.5,466.6 688.0,451.6 693.4,448.3 698.9,448.3 704.3,448.3 709.8,448.3 715.3,448.3 720.7,448.3 726.2,448.3 731.7,446.3 737.1,446.3 742.6,421.3 748.0,374.5 753.5,417.1 759.0,420.1 764.4,420.1 769.9,453.8 775.3,453.8 780.8,486.7 786.3,495.4 791.7,495.4 797.2,495.4 802.7,495.4 808.1,495.4 813.6,495.4 819.0,525.0 824.5,526.7 830.0,577.7 835.4,577.7 840.9,577.7 846.3,577.7 851.8,577.7 857.3,577.7 862.7,577.7 868.2,577.7 873.7,577.7 879.1,577.7 884.6,577.7 890.0,577.7 895.5,577.7 901.0,577.7 906.4,577.7 911.9,577.7 917.3,577.7 922.8,577.7 928.3,577.7 933.7,577.7 939.2,577.7 944.7,577.7 950.1,577.7 955.6,577.7 961.0,577.7 966.5,577.7 972.0,577.7 977.4,577.7 982.9,577.7 988.3,577.7 993.8,577.7 999.3,577.7 1004.7,577.7 1010.2,577.7 1015.7,577.7 1021.1,577.7 1026.6,577.7 1032.0,577.7 1037.5,577.7 1043.0,577.7 1048.4,577.7 1053.9,577.7 1059.3,577.7 1064.8,577.7 1070.3,577.7 1075.7,577.7 1081.2,577.7 1086.7,577.7 1092.1,577.7 1097.6,577.7 1103.0,577.7 1108.5,577.7 1114.0,577.7 1119.4,577.7 1124.9,577.7 1130.3,577.7 1135.8,577.7 1141.3,577.7" fill="none" stroke="#5D9CEC" stroke-width="1.4" opacity=".75" stroke-dasharray="5 4"/>
+<polygon points="10.7,542.8 16.2,536.0 21.7,528.5 27.1,519.4 32.6,508.2 38.0,497.2 43.5,490.8 49.0,482.5 54.4,477.5 59.9,472.4 65.3,470.1 70.8,466.8 76.3,464.5 81.7,460.7 87.2,449.1 92.7,438.3 98.1,426.3 103.6,418.0 109.0,410.4 114.5,401.4 120.0,392.8 125.4,383.6 130.9,374.4 136.3,367.7 141.8,359.5 147.3,353.2 152.7,342.6 158.2,333.5 163.7,323.2 169.1,313.4 174.6,301.8 180.0,292.2 185.5,280.7 191.0,270.1 196.4,257.2 201.9,243.8 207.3,232.4 212.8,223.7 218.3,215.1 223.7,207.3 229.2,198.9 234.7,192.9 240.1,187.4 245.6,182.4 251.0,178.2 256.5,174.7 262.0,171.8 267.4,170.2 272.9,169.8 278.3,169.5 283.8,168.0 289.3,164.8 294.7,161.3 300.2,157.7 305.7,154.5 311.1,151.8 316.6,150.0 322.0,148.1 327.5,145.1 333.0,143.9 338.4,144.3 343.9,142.5 349.3,141.4 354.8,140.0 360.3,138.5 365.7,139.4 371.2,137.4 376.7,134.6 382.1,133.2 387.6,132.2 393.0,132.0 398.5,133.5 404.0,135.0 409.4,135.8 414.9,135.4 420.3,134.7 425.8,134.6 431.3,133.3 436.7,133.8 442.2,133.6 447.7,132.6 453.1,132.7 458.6,135.3 458.6,141.5 453.1,138.8 447.7,139.0 442.2,140.1 436.7,140.3 431.3,139.9 425.8,140.5 420.3,141.0 414.9,141.7 409.4,142.5 404.0,141.9 398.5,141.1 393.0,139.4 387.6,140.1 382.1,140.6 376.7,141.4 371.2,144.4 365.7,145.7 360.3,144.6 354.8,146.1 349.3,147.6 343.9,148.6 338.4,150.3 333.0,149.7 327.5,150.6 322.0,153.7 316.6,155.7 311.1,157.2 305.7,159.9 300.2,163.4 294.7,167.3 289.3,171.3 283.8,174.5 278.3,175.9 272.9,176.7 267.4,176.5 262.0,178.1 256.5,181.4 251.0,184.6 245.6,189.2 240.1,194.9 234.7,200.9 229.2,206.7 223.7,215.0 218.3,223.7 212.8,232.6 207.3,241.9 201.9,254.2 196.4,267.2 191.0,278.9 185.5,289.9 180.0,300.8 174.6,311.0 169.1,321.9 163.7,332.1 158.2,342.5 152.7,352.3 147.3,361.6 141.8,368.2 136.3,376.5 130.9,383.1 125.4,392.8 120.0,402.6 114.5,412.2 109.0,421.0 103.6,429.3 98.1,438.2 92.7,449.7 87.2,460.9 81.7,470.0 76.3,473.5 70.8,476.0 65.3,479.4 59.9,482.0 54.4,487.7 49.0,492.4 43.5,500.4 38.0,506.0 32.6,517.1 27.1,527.4 21.7,536.4 16.2,543.5 10.7,550.0" fill="#26A69A" opacity="0.16"/>
+<polyline points="10.7,542.8 16.2,536.0 21.7,528.5 27.1,519.4 32.6,508.2 38.0,497.2 43.5,490.8 49.0,482.5 54.4,477.5 59.9,472.4 65.3,470.1 70.8,466.8 76.3,464.5 81.7,460.7 87.2,449.1 92.7,438.3 98.1,426.3 103.6,418.0 109.0,410.4 114.5,401.4 120.0,392.8 125.4,383.6 130.9,374.4 136.3,367.7 141.8,359.5 147.3,353.2 152.7,342.6 158.2,333.5 163.7,323.2 169.1,313.4 174.6,301.8 180.0,292.2 185.5,280.7 191.0,270.1 196.4,257.2 201.9,243.8 207.3,232.4 212.8,223.7 218.3,215.1 223.7,207.3 229.2,198.9 234.7,192.9 240.1,187.4 245.6,182.4 251.0,178.2 256.5,174.7 262.0,171.8 267.4,170.2 272.9,169.8 278.3,169.5 283.8,168.0 289.3,164.8 294.7,161.3 300.2,157.7 305.7,154.5 311.1,151.8 316.6,150.0 322.0,148.1 327.5,145.1 333.0,143.9 338.4,144.3 343.9,142.5 349.3,141.4 354.8,140.0 360.3,138.5 365.7,139.4 371.2,137.4 376.7,134.6 382.1,133.2 387.6,132.2 393.0,132.0 398.5,133.5 404.0,135.0 409.4,135.8 414.9,135.4 420.3,134.7 425.8,134.6 431.3,133.3 436.7,133.8 442.2,133.6 447.7,132.6 453.1,132.7 458.6,135.3" fill="none" stroke="#26A69A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#gl)"/>
 <polygon points="458.6,135.3 464.0,138.1 469.5,139.6 475.0,139.9 480.4,138.3 480.4,145.4 475.0,145.6 469.5,145.5 464.0,144.3 458.6,141.5" fill="#787B86" opacity="0.16"/>
 <polyline points="458.6,135.3 464.0,138.1 469.5,139.6 475.0,139.9 480.4,138.3" fill="none" stroke="#787B86" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#gl)"/>
 <polygon points="480.4,138.3 485.9,138.6 485.9,145.5 480.4,145.4" fill="#26A69A" opacity="0.16"/>
@@ -472,51 +466,54 @@
 <polyline points="993.8,400.3 999.3,401.7 1004.7,401.7 1010.2,400.2 1015.7,399.0 1021.1,393.7" fill="none" stroke="#787B86" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#gl)"/>
 <polygon points="1021.1,393.7 1026.6,388.0 1032.0,380.9 1037.5,371.4 1043.0,364.2 1048.4,361.3 1053.9,356.3 1059.3,352.4 1064.8,345.3 1070.3,337.6 1075.7,327.9 1081.2,317.2 1086.7,311.6 1092.1,304.4 1097.6,298.6 1103.0,294.3 1108.5,290.5 1114.0,284.6 1119.4,276.6 1124.9,266.7 1130.3,260.9 1135.8,256.2 1141.3,256.2 1141.3,265.9 1135.8,265.2 1130.3,270.6 1124.9,276.3 1119.4,286.1 1114.0,293.3 1108.5,299.0 1103.0,303.6 1097.6,308.5 1092.1,314.2 1086.7,321.4 1081.2,326.9 1075.7,337.2 1070.3,346.8 1064.8,354.5 1059.3,361.1 1053.9,365.4 1048.4,370.7 1043.0,373.4 1037.5,381.1 1032.0,390.5 1026.6,397.0 1021.1,403.1" fill="#26A69A" opacity="0.16"/>
 <polyline points="1021.1,393.7 1026.6,388.0 1032.0,380.9 1037.5,371.4 1043.0,364.2 1048.4,361.3 1053.9,356.3 1059.3,352.4 1064.8,345.3 1070.3,337.6 1075.7,327.9 1081.2,317.2 1086.7,311.6 1092.1,304.4 1097.6,298.6 1103.0,294.3 1108.5,290.5 1114.0,284.6 1119.4,276.6 1124.9,266.7 1130.3,260.9 1135.8,256.2 1141.3,256.2" fill="none" stroke="#26A69A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#gl)"/>
-<path d="M376.7,118.8 l-7,10 h14 z" fill="#26A69A"/>
-<rect x="353.7" y="138.8" width="46" height="17" rx="4" fill="#26A69A"/>
-<text x="376.7" y="151.3" fill="#fff" font-size="10.5" font-weight="700" font-family="system-ui,sans-serif" text-anchor="middle">LONG</text>
-<path d="M480.4,159.6 l-7,10 h14 z" fill="#26A69A"/>
-<rect x="457.4" y="179.6" width="46" height="17" rx="4" fill="#26A69A"/>
-<text x="480.4" y="192.1" fill="#fff" font-size="10.5" font-weight="700" font-family="system-ui,sans-serif" text-anchor="middle">LONG</text>
-<path d="M562.3,167.6 l-7,10 h14 z" fill="#26A69A"/>
-<rect x="539.3" y="187.6" width="46" height="17" rx="4" fill="#26A69A"/>
-<text x="562.3" y="200.1" fill="#fff" font-size="10.5" font-weight="700" font-family="system-ui,sans-serif" text-anchor="middle">LONG</text>
+<path d="M556.9,138.9 l-7,-10 h14 z" fill="#EF5350"/>
+<rect x="524.9" y="101.9" width="64" height="17" rx="4" fill="#EF5350"/>
+<text x="556.9" y="114.4" fill="#fff" font-size="10" font-weight="700" font-family="system-ui,sans-serif" text-anchor="middle">SHORT R</text>
 <path d="M644.3,234.8 l-7,-10 h14 z" fill="#EF5350"/>
-<rect x="618.3" y="197.8" width="52" height="17" rx="4" fill="#EF5350"/>
-<text x="644.3" y="210.3" fill="#fff" font-size="10.5" font-weight="700" font-family="system-ui,sans-serif" text-anchor="middle">SHORT</text>
-<path d="M939.2,447.8 l-7,-10 h14 z" fill="#EF5350"/>
-<rect x="913.2" y="410.8" width="52" height="17" rx="4" fill="#EF5350"/>
-<text x="939.2" y="423.3" fill="#fff" font-size="10.5" font-weight="700" font-family="system-ui,sans-serif" text-anchor="middle">SHORT</text>
-<path d="M1021.1,412.1 l-7,10 h14 z" fill="#26A69A"/>
-<rect x="998.1" y="432.1" width="46" height="17" rx="4" fill="#26A69A"/>
-<text x="1021.1" y="444.6" fill="#fff" font-size="10.5" font-weight="700" font-family="system-ui,sans-serif" text-anchor="middle">LONG</text>
-<rect x="992" y="52" width="232" height="191" rx="5" fill="#161B22" stroke="#2A323C"/>
+<rect x="612.3" y="197.8" width="64" height="17" rx="4" fill="#EF5350"/>
+<text x="644.3" y="210.3" fill="#fff" font-size="10" font-weight="700" font-family="system-ui,sans-serif" text-anchor="middle">SHORT T</text>
+<path d="M748.0,347.4 l-7,-10 h14 z" fill="#EF5350"/>
+<rect x="716.0" y="310.4" width="64" height="17" rx="4" fill="#EF5350"/>
+<text x="748.0" y="322.9" fill="#fff" font-size="10" font-weight="700" font-family="system-ui,sans-serif" text-anchor="middle">SHORT B</text>
+<path d="M824.5,515.4 l-7,-10 h14 z" fill="#EF5350"/>
+<rect x="792.5" y="478.4" width="64" height="17" rx="4" fill="#EF5350"/>
+<text x="824.5" y="490.9" fill="#fff" font-size="10" font-weight="700" font-family="system-ui,sans-serif" text-anchor="middle">SHORT B</text>
+<path d="M901.0,516.4 l-7,10 h14 z" fill="#26A69A"/>
+<rect x="872.0" y="536.4" width="58" height="17" rx="4" fill="#26A69A"/>
+<text x="901.0" y="548.9" fill="#fff" font-size="10" font-weight="700" font-family="system-ui,sans-serif" text-anchor="middle">LONG R</text>
+<path d="M977.4,394.6 l-7,10 h14 z" fill="#26A69A"/>
+<rect x="948.4" y="414.6" width="58" height="17" rx="4" fill="#26A69A"/>
+<text x="977.4" y="427.1" fill="#fff" font-size="10" font-weight="700" font-family="system-ui,sans-serif" text-anchor="middle">LONG T</text>
+<rect x="992" y="52" width="232" height="212" rx="5" fill="#161B22" stroke="#2A323C"/>
 <rect x="992" y="52" width="232" height="21" fill="#0B0E13"/>
-<text x="1001" y="66.5" fill="#fff" font-size="11" font-weight="700" font-family="system-ui,sans-serif">IFR PRO</text>
+<text x="1001" y="66.5" fill="#fff" font-size="11" font-weight="700" font-family="system-ui,sans-serif">IFR TRADER</text>
 <text x="1215" y="66.5" fill="#8A94A1" font-size="11" font-family="system-ui,sans-serif" text-anchor="end">15m</text>
-<text x="1001" y="87.5" fill="#8A94A1" font-size="10.5" font-family="system-ui,sans-serif">Serit</text>
+<text x="1001" y="87.5" fill="#8A94A1" font-size="10.5" font-family="system-ui,sans-serif">Rejim</text>
 <rect x="1112" y="76.5" width="103" height="14" rx="3" fill="#26A69A" opacity=".28"/>
-<text x="1211" y="87.5" fill="#26A69A" font-size="10.5" font-weight="650" font-family="ui-monospace,monospace" text-anchor="end">YUKSELIS</text>
-<text x="1001" y="108.5" fill="#8A94A1" font-size="10.5" font-family="system-ui,sans-serif">HTF1 60</text>
+<text x="1211" y="87.5" fill="#26A69A" font-size="10.5" font-weight="650" font-family="ui-monospace,monospace" text-anchor="end">TREND</text>
+<text x="1001" y="108.5" fill="#8A94A1" font-size="10.5" font-family="system-ui,sans-serif">Serit</text>
 <rect x="1112" y="97.5" width="103" height="14" rx="3" fill="#26A69A" opacity=".28"/>
 <text x="1211" y="108.5" fill="#26A69A" font-size="10.5" font-weight="650" font-family="ui-monospace,monospace" text-anchor="end">YUKSELIS</text>
-<text x="1001" y="129.5" fill="#8A94A1" font-size="10.5" font-family="system-ui,sans-serif">HTF2 240</text>
-<rect x="1112" y="118.5" width="103" height="14" rx="3" fill="#787B86" opacity=".28"/>
-<text x="1211" y="129.5" fill="#787B86" font-size="10.5" font-weight="650" font-family="ui-monospace,monospace" text-anchor="end">NOTR</text>
-<text x="1001" y="150.5" fill="#8A94A1" font-size="10.5" font-family="system-ui,sans-serif">Skor</text>
+<text x="1001" y="129.5" fill="#8A94A1" font-size="10.5" font-family="system-ui,sans-serif">Skor</text>
+<rect x="1112" y="118.5" width="103" height="14" rx="3" fill="#26A69A" opacity=".28"/>
+<text x="1211" y="129.5" fill="#26A69A" font-size="10.5" font-weight="650" font-family="ui-monospace,monospace" text-anchor="end">85.7</text>
+<text x="1001" y="150.5" fill="#8A94A1" font-size="10.5" font-family="system-ui,sans-serif">HTF 1D / 3D</text>
 <rect x="1112" y="139.5" width="103" height="14" rx="3" fill="#26A69A" opacity=".28"/>
-<text x="1211" y="150.5" fill="#26A69A" font-size="10.5" font-weight="650" font-family="ui-monospace,monospace" text-anchor="end">85.7</text>
-<text x="1001" y="171.5" fill="#8A94A1" font-size="10.5" font-family="system-ui,sans-serif">Akis L/S</text>
+<text x="1211" y="150.5" fill="#26A69A" font-size="10.5" font-weight="650" font-family="ui-monospace,monospace" text-anchor="end">YUKSELIS / NOTR</text>
+<text x="1001" y="171.5" fill="#8A94A1" font-size="10.5" font-family="system-ui,sans-serif">Kalite L/S</text>
 <rect x="1112" y="160.5" width="103" height="14" rx="3" fill="#26A69A" opacity=".28"/>
-<text x="1211" y="171.5" fill="#26A69A" font-size="10.5" font-weight="650" font-family="ui-monospace,monospace" text-anchor="end">4 / 1  (min 3)</text>
-<text x="1001" y="192.5" fill="#8A94A1" font-size="10.5" font-family="system-ui,sans-serif">Sikisma</text>
-<rect x="1112" y="181.5" width="103" height="14" rx="3" fill="#787B86" opacity=".28"/>
-<text x="1211" y="192.5" fill="#787B86" font-size="10.5" font-weight="650" font-family="ui-monospace,monospace" text-anchor="end">YOK</text>
-<text x="1001" y="213.5" fill="#8A94A1" font-size="10.5" font-family="system-ui,sans-serif">ADX / DI</text>
+<text x="1211" y="171.5" fill="#26A69A" font-size="10.5" font-weight="650" font-family="ui-monospace,monospace" text-anchor="end">5 / 1  (min 3)</text>
+<text x="1001" y="192.5" fill="#8A94A1" font-size="10.5" font-family="system-ui,sans-serif">Kutu</text>
+<rect x="1112" y="181.5" width="103" height="14" rx="3" fill="#5D9CEC" opacity=".28"/>
+<text x="1211" y="192.5" fill="#5D9CEC" font-size="10.5" font-weight="650" font-family="ui-monospace,monospace" text-anchor="end">105 - 130</text>
+<text x="1001" y="213.5" fill="#8A94A1" font-size="10.5" font-family="system-ui,sans-serif">ADX</text>
 <rect x="1112" y="202.5" width="103" height="14" rx="3" fill="#26A69A" opacity=".28"/>
 <text x="1211" y="213.5" fill="#26A69A" font-size="10.5" font-weight="650" font-family="ui-monospace,monospace" text-anchor="end">27.4  +DI</text>
 <text x="1001" y="234.5" fill="#8A94A1" font-size="10.5" font-family="system-ui,sans-serif">Pozisyon</text>
 <rect x="1112" y="223.5" width="103" height="14" rx="3" fill="#26A69A" opacity=".28"/>
-<text x="1211" y="234.5" fill="#26A69A" font-size="10.5" font-weight="650" font-family="ui-monospace,monospace" text-anchor="end">LONG</text>
-<text x="8" y="648" fill="#5B6672" font-size="11" font-family="system-ui,sans-serif">Institutional Flow Ribbon PRO — tek serit, renk donusunde sinyal, sikisma bolgesinde sessiz</text>
+<text x="1211" y="234.5" fill="#26A69A" font-size="10.5" font-weight="650" font-family="ui-monospace,monospace" text-anchor="end">LONG TREND</text>
+<text x="1001" y="255.5" fill="#8A94A1" font-size="10.5" font-family="system-ui,sans-serif">ENGEL</text>
+<rect x="1112" y="244.5" width="103" height="14" rx="3" fill="#26A69A" opacity=".28"/>
+<text x="1211" y="255.5" fill="#26A69A" font-size="10.5" font-weight="650" font-family="ui-monospace,monospace" text-anchor="end">HAZIR</text>
+<text x="8" y="648" fill="#5B6672" font-size="11" font-family="system-ui,sans-serif">IFR Trader Pro — rejim farkindali: RANGE kenar fade (R), BREAKOUT kapanis+hacim (B), TREND serit (T)</text>
 </svg>
