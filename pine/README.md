@@ -21,9 +21,9 @@ sebebi vardı:
 
 **1. MTF yanlış zaman dilimlerini soruyordu.** Varsayılanlar `HTF1 = 60`,
 `HTF2 = 240` sabitti (15 dakikalık grafik için). 4 saatlik grafikte HTF1
-grafikten *küçük*, HTF2 ise grafiğin *kendisi* oluyordu. Artık grafik zaman
-diliminden türetiliyor: **4× ve 12×**, standart bir merdivene yuvarlanarak
-(4 saatlik → 1D ve 3D; 15 dakikalık → 60 ve 240).
+grafikten *küçük*, HTF2 ise grafiğin *kendisi* oluyordu. Varsayılanlar artık
+4 saatlik grafiğe göre **1D / 3D**; grafik zaman diliminden küçük bir HTF
+seçilirse panelin **HTF Kontrol** satırı `HATALI` yazar (aşağıdaki tabloya bakın).
 
 **2. Asıl hata: beş kapının kesişimi.** Giriş için tek bir barda şunların hepsi
 isteniyordu — şerit tam o barda dönecek, iki HTF de yeşil, 5 para akışı
@@ -98,7 +98,21 @@ yeşil/kırmızı eşikleri (±40), şerit ağırlık modu.
 **2. Para akışı:** CVD, OBV, relative volume, MFI, seans VWAP — hepsi kalite
 puanına girdi. Hacim çarpanı (1.5) aynı zamanda kırılım onayında kullanılır.
 
-**3. MTF:** HTF1/HTF2 "Otomatik" (4× ve 12×) veya elle. Repaint koruması açık.
+**3. MTF:** HTF1/HTF2 **elle seçilir** — grafik zaman diliminden büyük olmalı.
+Repaint koruması açık.
+
+| Grafik | HTF 1 | HTF 2 |
+|---|---|---|
+| 15 dakika | 60 | 240 |
+| 1 saat | 240 | 1D |
+| **4 saat** (varsayılan) | **1D** | **3D** |
+| 1 gün | 1W | 1M |
+
+Otomatik türetme denenmişti ama Pine'ın tip sistemi izin vermiyor: kullanıcı
+tanımlı fonksiyonların dönüşü daima `series`, `request.security()`'nin zaman
+dilimi argümanı ise `simple` olmak zorunda (CE10123). Bunun yerine panelde
+**HTF Kontrol** satırı var: HTF grafikten küçükse `HATALI` yazar — eski sürümde
+sessizce yanlış çalışan durum artık görünür.
 
 **4. Rejim:** kutu geriye bakış (120 bar), kenar bölgesi (%15), ADX eşiği (20),
 hangi oyun kitaplarının açık olduğu.
@@ -167,8 +181,10 @@ python3 tools/pine_lint.py pine/ifr_master_pro.pine
 
 Betik bu projede gerçekten yaşanmış beş hata sınıfını denetler: parantez dengesi,
 girinti (Pine'ın satır devamı kuralı buna bağlı), satır sonu sarkan operatör,
-tanımsız yerleşik referans (`syminfo.exchange` hatasını bu yakaladı) ve köşeli
-parantez bağlamı (`TFOPT = [...]` / CE10156 hatasını bu yakaladı).
+tanımsız yerleşik referans (`syminfo.exchange`), köşeli parantez bağlamı
+(`TFOPT = [...]` / CE10156) ve **tip niteleyicisi** — simple bekleyen bir
+parametreye series argüman geçilmesi (`f_sec(htf1, ...)` / CE10123). Son üç
+kural, TradingView'in verdiği hataları düzeltmeden önce birebir yeniden üretti.
 
 **Derleme garantisi vermez** — yalnızca bilinen hata sınıflarını eler.
 

@@ -64,10 +64,12 @@ useVwap = input.bool(true, "Session VWAP Konumu", group = G2)
 // ═══════════════════════════════════════════════════════════════════════════════
 G3 = "3. Multi-Timeframe"
 
-// NOT: Pine'da koseli parantezli liste bir degiskene ATANAMAZ. options = [...]
-// her cagriya satir ici yazilmak zorunda; tekrar kacinilmazdir.
-htf1In    = input.string("Otomatik", "HTF 1", options = ["Otomatik", "15", "30", "60", "120", "240", "360", "720", "1D", "2D", "3D", "1W"], group = G3, tooltip = "Otomatik = grafik zaman diliminin 4 kati. 4 saatlik grafikte 1D olur.")
-htf2In    = input.string("Otomatik", "HTF 2", options = ["Otomatik", "15", "30", "60", "120", "240", "360", "720", "1D", "2D", "3D", "1W"], group = G3, tooltip = "Otomatik = grafik zaman diliminin 12 kati. 4 saatlik grafikte 3D olur.")
+// HTF'ler ELLE secilir. Otomatik turetme kaldirildi: kullanici tanimli
+// fonksiyonlarin donusu Pine'da DAIMA series'tir ve request.security()'nin
+// zaman dilimi argumani SIMPLE olmak zorundadir (CE10123). input.timeframe()
+// dogrudan simple uyumlu deger dondurur.
+htf1      = input.timeframe("1D", "HTF 1", group = G3, tooltip = "Grafik zaman diliminden BUYUK olmali. 4 saatlik grafik icin 1D, 1 saatlik icin 240, 15 dakikalik icin 60.")
+htf2      = input.timeframe("3D", "HTF 2", group = G3, tooltip = "HTF1 den de buyuk olmali. 4 saatlik grafik icin 3D, 1 saatlik icin 1D.")
 noRepaint = input.bool(true, "Sadece Kapanmis HTF Bari (repaint kapali)", group = G3)
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -248,10 +250,6 @@ f_baseline() =>
 f_sec(simple string _res, float _src) =>
     request.security(syminfo.tickerid, _res, noRepaint ? _src[1] : _src, lookahead = barmerge.lookahead_off)
 
-// Dakika degerini gecerli bir TradingView zaman dilimi metnine yuvarlar
-f_snapTf(float m) =>
-    m <= 1 ? "1" : m <= 3 ? "3" : m <= 5 ? "5" : m <= 15 ? "15" : m <= 30 ? "30" : m <= 60 ? "60" : m <= 120 ? "120" : m <= 240 ? "240" : m <= 360 ? "360" : m <= 720 ? "720" : m <= 1440 ? "1D" : m <= 4320 ? "3D" : m <= 10080 ? "1W" : "1M"
-
 f_state(float sc) =>
     sc >= thUp ? 1 : sc <= thDn ? -1 : 0
 
@@ -274,12 +272,10 @@ int   stCur    = f_state(scoreCur)
 
 [diPlus, diMinus, adxVal] = ta.dmi(adxLen, adxSm)
 
-// ── HTF'ler grafik zaman diliminden turetilir ────────────────────────────────
-// Eski surumde varsayilanlar 60/240 sabitti; 4 saatlik grafikte HTF1 grafikten
-// KUCUK, HTF2 ise grafigin KENDISI oluyordu. Artik 4x ve 12x olarak hesaplanir.
-float chartMins = timeframe.isseconds ? timeframe.multiplier / 60.0 : timeframe.isminutes ? timeframe.multiplier : timeframe.isdaily ? timeframe.multiplier * 1440.0 : timeframe.isweekly ? timeframe.multiplier * 10080.0 : timeframe.multiplier * 43200.0
-string htf1 = htf1In == "Otomatik" ? f_snapTf(chartMins * 4) : htf1In
-string htf2 = htf2In == "Otomatik" ? f_snapTf(chartMins * 12) : htf2In
+// HTF sirasi kontrolu: HTF grafikten kucukse onay anlamsizdir. Eski surumde
+// bu hata sessizce olusuyordu (4 saatlik grafikte HTF1=60), artik panelde yazar.
+// timeframe.in_seconds() argumansiz cagrilinca grafigin kendi dilimini verir.
+bool htfBad = timeframe.in_seconds(htf1) <= timeframe.in_seconds() or timeframe.in_seconds(htf2) <= timeframe.in_seconds(htf1)
 
 float scoreH1 = f_sec(htf1, f_score())
 float scoreH2 = f_sec(htf2, f_score())
@@ -483,7 +479,7 @@ plotshape(showLbl and shortSig, title = "SHORT", style = shape.labeldown, locati
 // ═══════════════════════════════════════════════════════════════════════════════
 string regTxt = rangeRegime ? "RANGE" : "TREND"
 
-var table pnl = table.new(position.top_right, 2, 10, border_width = 1)
+var table pnl = table.new(position.top_right, 2, 11, border_width = 1)
 
 if panelMode == "Tablo" and barstate.islast
     table.cell(pnl, 0, 0, "IFR TRADER", bgcolor = color.new(color.black, 10), text_color = color.white, text_size = size.small)
@@ -504,14 +500,16 @@ if panelMode == "Tablo" and barstate.islast
     table.cell(pnl, 1, 7, str.tostring(adxVal, "#.#") + (diPlus > diMinus ? "  +DI" : "  -DI"), bgcolor = color.new(diPlus > diMinus ? C_BULL : C_BEAR, 55), text_color = color.white, text_size = size.small)
     table.cell(pnl, 0, 8, "Pozisyon", bgcolor = color.new(color.gray, 80), text_color = color.white, text_size = size.small)
     table.cell(pnl, 1, 8, posSign > 0 ? "LONG " + pendMode : posSign < 0 ? "SHORT " + pendMode : "YOK", bgcolor = color.new(f_col(posSign), 45), text_color = color.white, text_size = size.small)
-    table.cell(pnl, 0, 9, "ENGEL", bgcolor = color.new(color.gray, 80), text_color = color.white, text_size = size.small)
-    table.cell(pnl, 1, 9, blocker, bgcolor = color.new(blocker == "HAZIR" ? C_BULL : C_FLAT, 45), text_color = color.white, text_size = size.small)
+    table.cell(pnl, 0, 9, "HTF Kontrol", bgcolor = color.new(color.gray, 80), text_color = color.white, text_size = size.small)
+    table.cell(pnl, 1, 9, htfBad ? "HATALI - HTF grafikten kucuk" : "OK", bgcolor = color.new(htfBad ? C_BEAR : C_BULL, 45), text_color = color.white, text_size = size.small)
+    table.cell(pnl, 0, 10, "ENGEL", bgcolor = color.new(color.gray, 80), text_color = color.white, text_size = size.small)
+    table.cell(pnl, 1, 10, blocker, bgcolor = color.new(blocker == "HAZIR" ? C_BULL : C_FLAT, 45), text_color = color.white, text_size = size.small)
 
 // Tablo alternatifi: ayni bilgiyi son bara etiket olarak yazar
 var label lb = na
 if panelMode == "Etiket" and barstate.islast
     label.delete(lb)
-    lb := label.new(bar_index, high, "IFR TRADER  " + timeframe.period + "\nRejim: " + regTxt + "\nSerit: " + f_txt(stCur) + "  (" + str.tostring(scoreCur, "#.#") + ")" + "\nHTF " + htf1 + "/" + htf2 + ": " + f_txt(stH1) + " / " + f_txt(stH2) + "\nKalite L/S: " + str.tostring(qLong) + " / " + str.tostring(qShort) + "  min " + str.tostring(qualityMin) + "\nKutu: " + (boxOk ? str.tostring(boxBot, format.mintick) + " - " + str.tostring(boxTop, format.mintick) : "-") + "\nADX: " + str.tostring(adxVal, "#.#") + "\nENGEL: " + blocker, style = label.style_label_left, color = color.new(color.black, 15), textcolor = color.white, size = size.small)
+    lb := label.new(bar_index, high, "IFR TRADER  " + timeframe.period + "\nRejim: " + regTxt + "\nSerit: " + f_txt(stCur) + "  (" + str.tostring(scoreCur, "#.#") + ")" + "\nHTF " + htf1 + "/" + htf2 + ": " + f_txt(stH1) + " / " + f_txt(stH2) + "\nKalite L/S: " + str.tostring(qLong) + " / " + str.tostring(qShort) + "  min " + str.tostring(qualityMin) + "\nKutu: " + (boxOk ? str.tostring(boxBot, format.mintick) + " - " + str.tostring(boxTop, format.mintick) : "-") + "\nADX: " + str.tostring(adxVal, "#.#") + "\nHTF Kontrol: " + (htfBad ? "HATALI" : "OK") + "\nENGEL: " + blocker, style = label.style_label_left, color = color.new(color.black, 15), textcolor = color.white, size = size.small)
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  ALARMLAR  ("Any alert() function call" ile kullanin)

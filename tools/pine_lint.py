@@ -81,6 +81,81 @@ def strip_noise(line: str) -> str:
     return re.sub(r'"[^"\n]*"|\'[^\'\n]*\'', " STR ", s)
 
 
+def split_args(text: str, start: int):
+    """'(' sonrasindaki indexten baslayip ust duzey virgullere gore boler."""
+    depth, cur, out = 0, "", []
+    for ch in text[start:]:
+        if ch in "([":
+            depth += 1
+        elif ch in ")]":
+            if depth == 0:
+                break
+            depth -= 1
+        if ch == "," and depth == 0:
+            out.append(cur)
+            cur = ""
+            continue
+        cur += ch
+    out.append(cur)
+    return out
+
+
+TYPE_KW = ("float", "int", "bool", "string", "color", "line", "label", "table", "box")
+
+
+def check_qualifiers(lines):
+    """simple parametreye series arguman gecisi (CE10123).
+
+    Pine'da request.security() gibi cagrilarin zaman dilimi argumani SIMPLE
+    olmali. Iki yaygin tuzak series uretir:
+      - kullanici tanimli fonksiyonlarin donusu DAIMA series'tir
+      - niteleyicisiz tip bildirimi (float x = ...) series demektir
+    """
+    body = [strip_noise(l) for l in lines]
+    issues = []
+
+    # 1) Kullanici fonksiyonlari ve hangi parametreleri 'simple' bildirilmis
+    userfns = {}
+    for l in body:
+        m = re.match(r"^(\w+)\(([^)]*)\)\s*=>", l)
+        if m:
+            params = [x.strip() for x in m.group(2).split(",")] if m.group(2).strip() else []
+            userfns[m.group(1)] = {i for i, x in enumerate(params) if x.startswith("simple ")}
+
+    # 2) Series ureten isimler
+    series_names = set()
+    for l in body:
+        m = re.match(r"^(?:" + "|".join(TYPE_KW) + r")\s+(\w+)\s*=", l)
+        if m:
+            series_names.add(m.group(1))
+        m2 = re.match(r"^(?:\w+\s+)?(\w+)\s*=\s*(.+)$", l)
+        if m2 and any(re.search(r"\b" + fn + r"\s*\(", m2.group(2)) for fn in userfns):
+            series_names.add(m2.group(1))
+
+    # 3) Cagri yerlerini denetle
+    for n, l in enumerate(body, 1):
+        for fn, simple_idx in userfns.items():
+            if not simple_idx:
+                continue
+            if re.match(r"^" + fn + r"\s*\(", l.strip()) and "=>" in l:
+                continue                                   # tanim satiri
+            for m in re.finditer(r"\b" + fn + r"\s*\(", l):
+                args = split_args(l, m.end())
+                for i in sorted(simple_idx):
+                    if i >= len(args):
+                        continue
+                    a = args[i].strip()
+                    why = None
+                    if a in series_names:
+                        why = f"'{a}' series olarak bildirilmis"
+                    elif any(re.search(r"\b" + f + r"\s*\(", a) for f in userfns):
+                        why = "arguman bir kullanici fonksiyonu cagrisi (donusu daima series)"
+                    if why:
+                        issues.append((n, f"SIMPLE PARAMETREYE SERIES ARGUMAN (CE10123) — "
+                                          f"{fn}() {i+1}. arguman: {why}", l.strip()[:70]))
+    return issues
+
+
 def lint(path: str):
     src = open(path, encoding="utf-8").read()
     lines = src.split("\n")
@@ -115,6 +190,9 @@ def lint(path: str):
             if re.search(r"(?<![=!<>])=\s*$", before):     # '=' veya ':=' ama '==' degil
                 issues.append((n, "LISTE ATAMASI (CE10156) — Pine'da [...] degiskene atanamaz",
                                raw.strip()[:70]))
+
+    # 6) Tip niteleyici denetimi
+    issues += check_qualifiers(lines)
 
     # 4) Yerlesik referans taramasi
     body = strip_noise(src)
