@@ -64,9 +64,10 @@ useVwap = input.bool(true, "Session VWAP Konumu", group = G2)
 // ═══════════════════════════════════════════════════════════════════════════════
 G3 = "3. Multi-Timeframe"
 
-TFOPT = ["Otomatik", "15", "30", "60", "120", "240", "360", "720", "1D", "2D", "3D", "1W"]
-htf1In    = input.string("Otomatik", "HTF 1", options = TFOPT, group = G3, tooltip = "Otomatik = grafik zaman diliminin 4 kati. 4 saatlik grafikte 1D olur.")
-htf2In    = input.string("Otomatik", "HTF 2", options = TFOPT, group = G3, tooltip = "Otomatik = grafik zaman diliminin 12 kati. 4 saatlik grafikte 3D olur.")
+// NOT: Pine'da koseli parantezli liste bir degiskene ATANAMAZ. options = [...]
+// her cagriya satir ici yazilmak zorunda; tekrar kacinilmazdir.
+htf1In    = input.string("Otomatik", "HTF 1", options = ["Otomatik", "15", "30", "60", "120", "240", "360", "720", "1D", "2D", "3D", "1W"], group = G3, tooltip = "Otomatik = grafik zaman diliminin 4 kati. 4 saatlik grafikte 1D olur.")
+htf2In    = input.string("Otomatik", "HTF 2", options = ["Otomatik", "15", "30", "60", "120", "240", "360", "720", "1D", "2D", "3D", "1W"], group = G3, tooltip = "Otomatik = grafik zaman diliminin 12 kati. 4 saatlik grafikte 3D olur.")
 noRepaint = input.bool(true, "Sadece Kapanmis HTF Bari (repaint kapali)", group = G3)
 
 // ═══════════════════════════════════════════════════════════════════════════════

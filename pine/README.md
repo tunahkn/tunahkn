@@ -158,8 +158,19 @@ ertelendi. Kalite yalnızca kapı olarak çalışıyor.
 komisyon varsayılanı (%0.05) kendi borsanıza göre güncellenmelidir.
 
 **8. Bu dosya TradingView'de derlenerek doğrulanmadı.** Bu ortamda Pine
-derleyicisi yok. Yapı denetimi (parantez, girinti) ve yerleşik referans taraması
-yapıldı — bu tarama önceki turda `syminfo.exchange` hatasını yakalamıştı.
+derleyicisi yok. Teslimden önce [`tools/pine_lint.py`](../tools/pine_lint.py)
+çalıştırılıyor:
+
+```bash
+python3 tools/pine_lint.py pine/ifr_master_pro.pine
+```
+
+Betik bu projede gerçekten yaşanmış beş hata sınıfını denetler: parantez dengesi,
+girinti (Pine'ın satır devamı kuralı buna bağlı), satır sonu sarkan operatör,
+tanımsız yerleşik referans (`syminfo.exchange` hatasını bu yakaladı) ve köşeli
+parantez bağlamı (`TFOPT = [...]` / CE10156 hatasını bu yakaladı).
+
+**Derleme garantisi vermez** — yalnızca bilinen hata sınıflarını eler.
 
 ---
 
