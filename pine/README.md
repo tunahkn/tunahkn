@@ -31,10 +31,21 @@ olmadığı için hangi satırın patladığını göremedim; bu yüzden hata av
 Ayrıca `ta.dmi()` tuple'ının kullanılmayan `diPlus`/`diMinus` değerleri artık
 panelde trend yönü olarak gösteriliyor — hem uyarı kalktı hem bilgi kazanıldı.
 
-Yapı; parantez dengesi, girinti tutarlılığı ve satır sonu operatörü açısından
-otomatik denetimden geçirildi. **Ama uyarım net: bu dosya TradingView'de
-derlenerek doğrulanmadı**, bu ortamda Pine derleyicisi yok. Hata alırsanız
-mesajın tam metnini gönderin, tek turda kapatayım.
+### Düzeltilen gerçek hata: `syminfo.exchange`
+
+`f_json()` içinde `syminfo.exchange` kullanılmıştı — **Pine'da böyle bir yerleşik
+değişken yok.** Doğrusu `syminfo.prefix` (borsa öneki, örn. "BINANCE"). Bu satır
+hem ilk sürümde hem yeniden yazımda aynen bulunduğu için, en baştaki derleme
+hatasının kaynağı büyük olasılıkla buydu.
+
+Bunun üzerine dosyadaki **tüm** yerleşik referanslar (`ta.*`, `strategy.*`,
+`syminfo.*`, `str.*`, `format.*`, `plot.*`, `shape.*`, `position.*` …) tek tek
+tarandı; `syminfo.exchange` dışında geçersiz tanımlayıcı bulunmadı.
+
+Yapı ayrıca parantez dengesi, girinti tutarlılığı ve satır sonu operatörü
+açısından denetlendi. **Yine de dosya TradingView'de derlenerek doğrulanmadı**,
+bu ortamda Pine derleyicisi yok. Başka hata çıkarsa mesajın tam metnini
+gönderin.
 
 ---
 

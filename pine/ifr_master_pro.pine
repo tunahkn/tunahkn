@@ -258,7 +258,7 @@ f_txt(int st) =>
     st == 1 ? "YUKSELIS" : st == -1 ? "DUSUS" : "NOTR"
 
 f_json(string act, float px, float sl, float tp, float sc) =>
-    '{"action":"' + act + '","ticker":"' + syminfo.ticker + '","exchange":"' + syminfo.exchange + '","tf":"' + timeframe.period + '","price":' + str.tostring(px, format.mintick) + ',"sl":' + str.tostring(sl, format.mintick) + ',"tp":' + str.tostring(tp, format.mintick) + ',"score":' + str.tostring(sc, "#.##") + '}'
+    '{"action":"' + act + '","ticker":"' + syminfo.ticker + '","exchange":"' + syminfo.prefix + '","tf":"' + timeframe.period + '","price":' + str.tostring(px, format.mintick) + ',"sl":' + str.tostring(sl, format.mintick) + ',"tp":' + str.tostring(tp, format.mintick) + ',"score":' + str.tostring(sc, "#.##") + '}'
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  MEVCUT TF HESAPLARI
