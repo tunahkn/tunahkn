@@ -92,8 +92,9 @@ adxTh     = input.float(20, "ADX Esigi (alti = yatay rejim)", minval = 5, maxval
 // ═══════════════════════════════════════════════════════════════════════════════
 G5 = "5. Sinyal Kalitesi"
 
-flipWindow = input.int(3, "Renk Donus Penceresi (bar)", minval = 1, maxval = 20, group = G5, tooltip = "Serit son kac bar icinde donmus olmali. 1 = eski 'tam o bar' davranisi.")
+flipWindow = input.int(1, "Renk Donus Penceresi (bar)", minval = 1, maxval = 20, group = G5, tooltip = "Serit son kac bar icinde donmus olmali. 1 = eski 'tam o bar' davranisi.")
 qualityMin = input.int(3, "Minimum Kalite Puani (0-7)", minval = 0, maxval = 7, group = G5, tooltip = "MTF uyumu (0-2) + para akisi onaylari (0-5). Bu puanin altinda TREND girisi yok.")
+cooldownBars = input.int(0, "Sinyaller Arasi Minimum Bar", minval = 0, maxval = 100, group = G5, tooltip = "0 = kapali (varsayilan). Sentetik veride bunu acmak getiriyi dusurup drawdown u artirdi: ters sinyalde pozisyon cevirmeyi de blokluyor. Daha az sinyal isterseniz 6 deneyin (4 saatlikte 1 gun).")
 useSqTrend = input.bool(true, "Sikisma TREND girisini engellesin", group = G5, tooltip = "Sikisma yalnizca TREND modunu susturur; RANGE modu zaten dusuk ADX'te calisir.")
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -124,7 +125,6 @@ showBox   = input.bool(true, "Kutu Sinirlarini Ciz", group = G7)
 showLbl   = input.bool(true, "Sinyal Etiketleri", group = G7)
 showLvl   = input.bool(true, "Stop ve Hedef Cizgileri", group = G7)
 showBars  = input.bool(false, "Mumlari Serit Rengiyle Boya", group = G7)
-panelMode = input.string("Tablo", "Durum Paneli", options = ["Tablo", "Etiket", "Kapali"], group = G7, tooltip = "Tablo gorunmuyorsa Etiket secin — ayni bilgiyi son bara yazar.")
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  RENKLER
@@ -347,8 +347,19 @@ bool squeeze     = not na(adxVal) and adxVal < adxTh
 float edge = boxOk ? boxH * edgePct / 100.0 : na
 bool atLow  = boxOk and low <= boxBot + edge
 bool atHigh = boxOk and high >= boxTop - edge
-bool rgLong  = useRange and rangeRegime and atLow and close > boxBot + edge * 0.5 and close > open
-bool rgShort = useRange and rangeRegime and atHigh and close < boxTop - edge * 0.5 and close < open
+// RANGE yeniden kurulma kilidi: alt kenardan long alindiysa, fiyat kutunun
+// ortasina donmeden ayni kenardan ikinci bir long acilmaz. Bir trader da
+// ayni seviyeden arka arkaya girmez.
+float boxMid = boxOk ? (boxTop + boxBot) / 2 : na
+var bool rgLongArmed  = true
+var bool rgShortArmed = true
+if boxOk and close > boxMid
+    rgLongArmed := true
+if boxOk and close < boxMid
+    rgShortArmed := true
+
+bool rgLong  = useRange and rangeRegime and rgLongArmed and atLow and close > boxBot + edge * 0.5 and close > open
+bool rgShort = useRange and rangeRegime and rgShortArmed and atHigh and close < boxTop - edge * 0.5 and close < open
 
 // ── 2) BREAKOUT: kutu disina KAPANIS + hacim ────────────────────────────────
 bool boUpRaw = boxOk and close > boxTop and rvolOk
@@ -366,8 +377,23 @@ bool trLong  = useTrend and trendRegime and not sqBlock and stCur == 1 and fUpAg
 bool trShort = useTrend and trendRegime and not sqBlock and stCur == -1 and fDnAgo <= flipWindow and qShort >= qualityMin
 
 // ── Birlesik sinyaller ──────────────────────────────────────────────────────
-bool longSig  = allowLong and (rgLong or boLong or trLong)
-bool shortSig = allowShort and (rgShort or boShort or trShort)
+// Bekleme suresi: bir sinyalden sonra en az cooldownBars bar gecmeden yeni
+// sinyal uretilmez. LONG LONG LONG yigininin ana panzehiri budur.
+var int lastSigBar = -9999
+bool coolOk = cooldownBars <= 0 or (bar_index - lastSigBar) >= cooldownBars
+
+bool longSig  = allowLong and coolOk and (rgLong or boLong or trLong)
+bool shortSig = allowShort and coolOk and (rgShort or boShort or trShort)
+
+// Etiket, alarm ve emir AYNI kapiyi kullanir: gorulen her etiketin karsiliginda
+// gercekten acilan bir islem olur. Onceki surumde plotshape ham sinyali
+// cizdigi icin pozisyon aciktan bloke edilen sinyaller de etiketleniyordu.
+// Kapi POZISYON DURUMUNA bakar: zaten long iken gelen long sinyali pyramiding=0
+// yuzunden hicbir emir acmaz, dolayisiyla etiket de basilmaz. Ust uste yigilan
+// LONG LONG LONG kutularinin sebebi buydu. Reverse acikken ters pozisyondan
+// donmek gercek bir islemdir, o etiketlenir.
+bool longEntry  = longSig and (allowRev ? strategy.position_size <= 0 : strategy.position_size == 0)
+bool shortEntry = shortSig and (allowRev ? strategy.position_size >= 0 : strategy.position_size == 0)
 string sigMode = boLong or boShort ? "BREAKOUT" : rgLong or rgShort ? "RANGE" : "TREND"
 
 // Her modun kendi stop/hedef seviyesi
@@ -399,16 +425,19 @@ var float pendStop = na
 var float pendTp   = na
 var float pendAtr  = na
 var string pendMode = "TREND"
-if longSig or shortSig
+if longEntry or shortEntry
+    lastSigBar := bar_index
     pendStop := sigStop
     pendTp := sigTp
     pendAtr := atrVal
     pendMode := sigMode
 
-if longSig and (allowRev or strategy.position_size == 0)
+if longEntry
+    rgLongArmed := false
     strategy.entry("LONG", strategy.long, comment = sigMode, alert_message = f_json("buy", sigMode, close, nz(sigStop), nz(sigTp)))
 
-if shortSig and (allowRev or strategy.position_size == 0)
+if shortEntry
+    rgShortArmed := false
     strategy.entry("SHORT", strategy.short, comment = sigMode, alert_message = f_json("sell", sigMode, close, nz(sigStop), nz(sigTp)))
 
 var float stopPx = na
@@ -446,7 +475,7 @@ if strategy.position_size < 0
 // ═══════════════════════════════════════════════════════════════════════════════
 int  qNow = stCur == 1 ? qLong : stCur == -1 ? qShort : 0
 int  fAgo = stCur == 1 ? fUpAgo : stCur == -1 ? fDnAgo : 9999
-string blocker = posSign != 0 ? "POZISYONDA" : not boxOk ? "VERI ISINIYOR" : rangeRegime ? (atLow or atHigh ? "KENARDA - onay bekleniyor" : "ORTA BOLGE - islem yok") : sqBlock ? "SIKISMA (TREND kapali)" : stCur == 0 ? "SKOR NOTR" : fAgo > flipWindow ? "DONUS ESKI (" + str.tostring(fAgo) + " bar)" : qNow < qualityMin ? "KALITE " + str.tostring(qNow) + "/" + str.tostring(qualityMin) : "HAZIR"
+string blocker = posSign != 0 ? "POZISYONDA" : not boxOk ? "VERI ISINIYOR" : not coolOk ? "BEKLEME (" + str.tostring(cooldownBars - (bar_index - lastSigBar)) + " bar)" : rangeRegime ? (atLow or atHigh ? "KENARDA - onay bekleniyor" : "ORTA BOLGE - islem yok") : sqBlock ? "SIKISMA (TREND kapali)" : stCur == 0 ? "SKOR NOTR" : fAgo > flipWindow ? "DONUS ESKI (" + str.tostring(fAgo) + " bar)" : qNow < qualityMin ? "KALITE " + str.tostring(qNow) + "/" + str.tostring(qualityMin) : "HAZIR"
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  GORSELLESTIRME
@@ -468,8 +497,8 @@ plot(showLvl and posSign != 0 ? tpPx : na, "Hedef", color = color.new(C_BULL, 20
 barcolor(showBars ? ribCol : na, title = "Mum Rengi")
 bgcolor(rangeRegime ? color.new(C_SQ, 94) : na, title = "RANGE Rejimi")
 
-plotshape(showLbl and longSig, title = "LONG", style = shape.labelup, location = location.belowbar, color = C_BULL, textcolor = color.white, text = "LONG", size = size.small)
-plotshape(showLbl and shortSig, title = "SHORT", style = shape.labeldown, location = location.abovebar, color = C_BEAR, textcolor = color.white, text = "SHORT", size = size.small)
+plotshape(showLbl and longEntry, title = "LONG", style = shape.labelup, location = location.belowbar, color = C_BULL, textcolor = color.white, text = "LONG", size = size.small)
+plotshape(showLbl and shortEntry, title = "SHORT", style = shape.labeldown, location = location.abovebar, color = C_BEAR, textcolor = color.white, text = "SHORT", size = size.small)
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  DURUM PANELI
@@ -481,7 +510,7 @@ string regTxt = rangeRegime ? "RANGE" : "TREND"
 
 var table pnl = table.new(position.top_right, 2, 11, border_width = 1)
 
-if panelMode == "Tablo" and barstate.islast
+if barstate.islast
     table.cell(pnl, 0, 0, "IFR TRADER", bgcolor = color.new(color.black, 10), text_color = color.white, text_size = size.small)
     table.cell(pnl, 1, 0, timeframe.period, bgcolor = color.new(color.black, 10), text_color = color.white, text_size = size.small)
     table.cell(pnl, 0, 1, "Rejim", bgcolor = color.new(color.gray, 80), text_color = color.white, text_size = size.small)
@@ -505,17 +534,18 @@ if panelMode == "Tablo" and barstate.islast
     table.cell(pnl, 0, 10, "ENGEL", bgcolor = color.new(color.gray, 80), text_color = color.white, text_size = size.small)
     table.cell(pnl, 1, 10, blocker, bgcolor = color.new(blocker == "HAZIR" ? C_BULL : C_FLAT, 45), text_color = color.white, text_size = size.small)
 
-// Tablo alternatifi: ayni bilgiyi son bara etiket olarak yazar
+// Tablodan BAGIMSIZ ikinci yuzey: son bara tek satirlik ozet. Tablo herhangi bir
+// sebeple gorunmezse (ayri olcek, kayitli ayar, panel gizli) durum yine okunur.
 var label lb = na
-if panelMode == "Etiket" and barstate.islast
+if barstate.islast
     label.delete(lb)
-    lb := label.new(bar_index, high, "IFR TRADER  " + timeframe.period + "\nRejim: " + regTxt + "\nSerit: " + f_txt(stCur) + "  (" + str.tostring(scoreCur, "#.#") + ")" + "\nHTF " + htf1 + "/" + htf2 + ": " + f_txt(stH1) + " / " + f_txt(stH2) + "\nKalite L/S: " + str.tostring(qLong) + " / " + str.tostring(qShort) + "  min " + str.tostring(qualityMin) + "\nKutu: " + (boxOk ? str.tostring(boxBot, format.mintick) + " - " + str.tostring(boxTop, format.mintick) : "-") + "\nADX: " + str.tostring(adxVal, "#.#") + "\nHTF Kontrol: " + (htfBad ? "HATALI" : "OK") + "\nENGEL: " + blocker, style = label.style_label_left, color = color.new(color.black, 15), textcolor = color.white, size = size.small)
+    lb := label.new(bar_index, high, regTxt + "  ·  " + f_txt(stCur) + "  ·  " + blocker, style = label.style_label_left, color = color.new(rangeRegime ? C_SQ : f_col(stCur), 25), textcolor = color.white, size = size.small)
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  ALARMLAR  ("Any alert() function call" ile kullanin)
 // ═══════════════════════════════════════════════════════════════════════════════
-if longSig
+if longEntry
     alert(f_json("buy", sigMode, close, nz(sigStop), nz(sigTp)), alert.freq_once_per_bar_close)
 
-if shortSig
+if shortEntry
     alert(f_json("sell", sigMode, close, nz(sigStop), nz(sigTp)), alert.freq_once_per_bar_close)

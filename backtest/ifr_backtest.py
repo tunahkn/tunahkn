@@ -360,7 +360,33 @@ def playbooks(pre, p):
     trL = use_t & trendReg & ~squeeze & (st == 1) & (fU <= p["flipw"]) & (qL >= p["qmin"])
     trS = use_t & trendReg & ~squeeze & (st == -1) & (fD <= p["flipw"]) & (qS >= p["qmin"])
 
-    L, S = rgL | boL | trL, rgS | boS | trS
+    # ── Sirali gecis: RANGE re-arm kilidi + bekleme suresi (Pine ile ayni) ──
+    # rgL/rgS ham tetikleyiciler; asagidaki dongu ayni kenardan arka arkaya
+    # girisi ve ardisik barlarda tekrar sinyal uretmeyi engeller.
+    boxMid = (bt + bb) / 2.0
+    cd = int(p.get("cooldown", 0))
+    L = np.zeros(n, bool)
+    S = np.zeros(n, bool)
+    armL = armS = True
+    last = -10 ** 9
+    for i in range(n):
+        if np.isfinite(boxMid[i]):
+            if c[i] > boxMid[i]:
+                armL = True
+            if c[i] < boxMid[i]:
+                armS = True
+        okL = (rgL[i] and armL) or boL[i] or trL[i]
+        okS = (rgS[i] and armS) or boS[i] or trS[i]
+        if (okL or okS) and (cd <= 0 or i - last >= cd):
+            if okL:
+                L[i] = True
+                if rgL[i]:
+                    armL = False
+            else:
+                S[i] = True
+                if rgS[i]:
+                    armS = False
+            last = i
 
     stop = np.full(n, np.nan)
     tp = np.full(n, np.nan)
@@ -406,6 +432,7 @@ def apply_to_pine(params: dict, path: str) -> None:
         (pat("thDn", "float"), str(-float(params["th"]))),
         (pat("qualityMin", "int"), str(int(params["qmin"]))),
         (pat("flipWindow", "int"), str(int(params["flipw"]))),
+        (pat("cooldownBars", "int"), str(int(params["cooldown"]))),
         (pat("adxTh", "float"), str(float(params["adxTh"]))),
         (pat("edgePct", "float"), str(float(params["edge"]))),
         (pat("atrMult", "float"), str(float(params["atr"]))),
@@ -492,15 +519,15 @@ def main():
 
     if a.quick:
         grid = dict(mode=["auto", "trend", "range", "breakout"], w=[50], th=[40],
-                    qmin=[2, 3], flipw=[3], atr=[1.5], rr=[2.0], adxTh=[20],
-                    edge=[15], pad=[0.5], rev=[True])
+                    qmin=[2, 3], flipw=[1], atr=[1.5], rr=[2.0], adxTh=[20],
+                    edge=[15], pad=[0.5], rev=[True], cooldown=[0])
     else:
         # Grid bilerek dar tutuldu: her ek parametre coklu-karsilastirma
         # yaniltmasini buyutur, yani sansa iyi gorunen ayar bulma riskini.
         grid = dict(mode=["auto", "trend", "range", "breakout"],
-                    w=[50], th=[30, 40, 50], qmin=[2, 3, 4], flipw=[1, 3, 5],
+                    w=[50], th=[30, 40, 50], qmin=[2, 3, 4], flipw=[1, 3],
                     atr=[1.5, 2.0], rr=[1.5, 2.0, 3.0], adxTh=[20, 25],
-                    edge=[15], pad=[0.5], rev=[True])
+                    edge=[15], pad=[0.5], rev=[True, False], cooldown=[0, 4, 8])
     keys = list(grid)
     combos = [dict(zip(keys, v)) for v in __import__("itertools").product(*grid.values())]
     print(f"── TARAMA ── {len(combos)} kombinasyon")
@@ -562,11 +589,11 @@ def main():
         print("  tum gecmiste:", m_all)
 
     print(f"\n── EN IYI {a.top} (tum gecmis, getiriye gore) ──")
-    hdr = f"{'mod':>10}{'th':>5}{'qmin':>6}{'flipw':>7}{'atr':>5}{'rr':>5}{'adx':>5}" \
+    hdr = f"{'mod':>10}{'th':>5}{'qmin':>6}{'cd':>4}{'atr':>5}{'rr':>5}{'adx':>5}" \
           f"{'getiri%':>10}{'dd%':>8}{'PF':>6}{'islem':>7}"
     print(hdr); print("-" * len(hdr))
     for p, m in sorted(ok or full, key=lambda x: -x[1]["return_pct"])[:a.top]:
-        print(f"{p['mode']:>10}{p['th']:>5}{p['qmin']:>6}{p['flipw']:>7}{p['atr']:>5}"
+        print(f"{p['mode']:>10}{p['th']:>5}{p['qmin']:>6}{p['cooldown']:>4}{p['atr']:>5}"
               f"{p['rr']:>5}{p['adxTh']:>5}{m['return_pct']:>10.1f}"
               f"{m['max_dd_pct']:>8.1f}{m['profit_factor']:>6.2f}{m['trades']:>7}")
 

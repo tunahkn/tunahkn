@@ -84,9 +84,11 @@ Panelin son satırı **ENGEL**: pozisyon yokken sinyali kimin bloke ettiğini ya
 | `KALITE 2/3` | Kalite puanı eşiğin altında |
 | `VERI ISINIYOR` | Kutu için yeterli bar yok |
 
-> Panel görünmüyorsa **Görsel → Durum Paneli → "Etiket"** seçin; aynı bilgiyi
-> son bara etiket olarak yazar. (Önceki sürümde tablo render olmuyordu; burada
-> tablo en sade kalıba indirildi ve konum sabitlendi.)
+Panel **her zaman çizilir** — açma/kapama girdisi kaldırıldı. Panel iki kez
+görünmediği için anahtarın kayıtlı ayarlarda yanlış değerde takılı kalması en
+olası sebepti; anahtar yoksa kapalı kalamaz. Ayrıca tablodan **bağımsız ikinci
+bir yüzey** var: son bara `RANGE · YUKSELIS · HAZIR` biçiminde tek satırlık
+etiket. Tablo herhangi bir sebeple çıkmazsa durum yine okunur.
 
 ---
 
@@ -117,7 +119,8 @@ sessizce yanlış çalışan durum artık görünür.
 **4. Rejim:** kutu geriye bakış (120 bar), kenar bölgesi (%15), ADX eşiği (20),
 hangi oyun kitaplarının açık olduğu.
 
-**5. Kalite:** renk dönüş penceresi (3 bar), minimum kalite puanı (3/7),
+**5. Kalite:** renk dönüş penceresi (**1 bar** — orijinal briefteki "sadece renk
+değişiminde"), minimum kalite puanı (3/7), bekleme süresi (varsayılan **0 = kapalı**),
 sıkışmanın TREND'i susturup susturmayacağı.
 
 **6. Risk:** ATR uzunluğu, TREND stop çarpanı (1.5), R/R (2.0), RANGE/BREAKOUT
@@ -142,6 +145,35 @@ belirler.
 | Kutu geriye bakış | 120 bar | 20 gün — ekrandaki sıkışmayı kapsar |
 | ADX eşiği | 20 | Klasik trendsizlik sınırı |
 | TREND stop / R:R | 1.5 ATR / 2.0 | BTC volatilitesinde makul |
+
+---
+
+## Sinyal kirliliği: ne düzeltildi
+
+Grafikte onlarca üst üste binmiş `LONG LONG LONG` kutusu vardı. Sebep **etiketin
+yanlış koşula bağlı olmasıydı**: `plotshape` ham sinyali çiziyordu, ama
+`pyramiding = 0` yüzünden zaten long iken gelen long sinyali hiçbir emir açmıyordu.
+Yani kutuların çoğu işlem değil, reddedilmiş aday sinyaldi.
+
+Etiket, alarm ve emir artık **aynı kapıyı** kullanıyor:
+
+```pine
+bool longEntry = longSig and (allowRev ? strategy.position_size <= 0 : strategy.position_size == 0)
+```
+
+Gördüğünüz her etiketin karşılığında gerçekten açılan bir işlem var. Buna ek
+olarak `flipWindow` 1'e çekildi (dönüş yalnız o barda) ve RANGE moduna
+**yeniden kurulma kilidi** eklendi: alt kenardan long alındıysa, fiyat kutunun
+ortasına dönmeden aynı kenardan ikinci long açılmaz.
+
+### Ölçüm beklentimi yanlış çıkardı
+
+Bekleme süresini (cooldown) varsayılan 6 bar yapmayı planlamıştım. Sentetik
+veride ölçtüğümde **getiri %19'dan %13'e düştü ve drawdown -4.4%'ten -8.0%'e
+çıktı.** Sebebi mantıklı: bekleme süresi ters sinyalde pozisyon çevirmeyi de
+bloke ediyor, yani kötü pozisyonda daha uzun kalınıyor. Aynı ölçüm
+`Reverse = kapalı` varsayılanını da eledi. İkisi de ölçüme göre geri alındı;
+bekleme süresi girdi olarak duruyor ama **varsayılanı 0 (kapalı)**.
 
 ---
 
