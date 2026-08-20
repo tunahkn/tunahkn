@@ -37,8 +37,7 @@ koşulun AND'i pratikte hiç oluşmuyor.
 
 Somut olarak: MTF uyumu (0–2 puan) + para akışı onayları (0–5 puan) = 0–7
 arası tek bir **kalite puanı**. Eşiği (varsayılan 3) geçmeyen TREND girişi
-açılmaz, ama artık her filtrenin ayrı ayrı veto hakkı yok. Ayrıca renk dönüşü
-"tam o bar" yerine **son N bar içinde** aranıyor (`flipWindow`, varsayılan 3).
+açılmaz, ama artık her filtrenin ayrı ayrı veto hakkı yok.
 
 Sentetik veriyle ölçüm: eski tasarım sıfıra yakın işlem üretirken yeni tasarım
 aynı veride **142 işlem** üretti ve üç walk-forward diliminin üçü de pozitif
@@ -127,7 +126,7 @@ sıkışmanın TREND'i susturup susturmayacağı.
 stop payı (0.5 ATR), trailing, reverse.
 
 **7. Görsel:** şerit kalınlığı, gradient fill, kutu çizgileri, sinyal etiketleri,
-stop/hedef çizgileri, mum boyama, panel modu.
+stop/hedef çizgileri, mum boyama. (Panel anahtarı yok — her zaman çizilir.)
 
 ---
 
@@ -141,7 +140,7 @@ belirler.
 |---|---|---|
 | Eşikler | ±40 | 4 saatlikte skor bu bandın dışına anlamlı trendlerde çıkar |
 | Kalite min. | 3 / 7 | Daha yükseği işlem sayısını hızla sıfırlar |
-| Dönüş penceresi | 3 bar | 12 saatlik onay toleransı |
+| Dönüş penceresi | 1 bar | Orijinal brief: sadece renk değişim barında |
 | Kutu geriye bakış | 120 bar | 20 gün — ekrandaki sıkışmayı kapsar |
 | ADX eşiği | 20 | Klasik trendsizlik sınırı |
 | TREND stop / R:R | 1.5 ATR / 2.0 | BTC volatilitesinde makul |
